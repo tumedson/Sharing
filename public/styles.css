@@ -789,3 +789,108 @@ body.share-page {
 @media (max-width:1024px) and (min-width:761px){
   .share-photos-grid{grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:4px;gap:3px}
 }
+
+/* ============================================================
+   DASHBOARD MOBILE — sidebar collapses to bottom tab bar
+   ============================================================ */
+@media (max-width:760px){
+  /* Override the broad `button{width:100%}` rule for dashboard context */
+  .dash-shell button{width:auto}
+
+  /* Dashboard layout: single column, full height */
+  .dash-shell{grid-template-columns:1fr;min-height:100svh}
+
+  /* Main area scrolls normally; leave room for bottom nav */
+  .dash-main{height:auto;min-height:0;overflow-y:visible;padding-bottom:68px}
+
+  /* Sidebar becomes a fixed bottom tab bar */
+  .dash-sidebar{
+    position:fixed;
+    inset:auto 0 0 0;
+    height:auto;
+    flex-direction:row;
+    align-items:stretch;
+    border-right:0;
+    border-top:1px solid var(--line);
+    background:rgba(10,9,7,0.97);
+    backdrop-filter:blur(14px);
+    overflow:visible;
+    z-index:100;
+  }
+  .dash-sidebar-top{flex:1;padding:0}
+  .dash-brand{display:none}
+  .dash-nav{flex-direction:row;justify-content:space-around;gap:0;padding:0}
+  .dash-nav-item{
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:3px;
+    padding:8px 10px;
+    min-height:54px;
+    border-radius:0;
+    font-size:0.6rem;
+    letter-spacing:0.02em;
+    width:auto;
+  }
+  .dash-sidebar-bottom{border-top:0;border-left:1px solid var(--line);padding:0;display:flex;align-items:stretch}
+  .dash-logout{
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:3px;
+    padding:8px 14px;
+    min-height:54px;
+    border-radius:0;
+    font-size:0.6rem;
+    width:auto;
+  }
+
+  /* Topbar */
+  .dash-topbar{padding:10px 14px;flex-wrap:wrap;gap:8px}
+  .dash-topbar-left{flex:1;min-width:0;flex-wrap:wrap;gap:8px}
+  .dash-topbar-right{gap:6px;flex-wrap:wrap}
+  .dash-view-title{font-size:1rem}
+  #share-folder-btn,#upload-toggle-btn,#back-btn,#new-collection-btn{min-height:34px;font-size:0.82rem;padding:0 12px}
+
+  /* New collection row */
+  .new-collection-row{padding:10px 14px;flex-wrap:wrap}
+  .new-collection-row input{max-width:100%;flex:1 1 100%}
+  #create-folder-btn,#cancel-new-folder-btn{flex:1}
+
+  /* Collections grid */
+  .collections-grid{padding:14px 14px 40px;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:12px}
+
+  /* Upload panel */
+  .upload-panel{padding:10px 14px}
+
+  /* Detail toolbar — stack into column */
+  .detail-toolbar{flex-direction:column;align-items:stretch;padding:10px 14px;gap:10px}
+  .detail-toolbar-left{justify-content:flex-start}
+  .detail-share-row{flex-wrap:wrap}
+  .detail-share-row input[type="number"]{width:64px;flex-shrink:0}
+  .detail-share-label,.detail-share-unit{flex-shrink:0}
+  #create-share-btn{flex:1;width:auto}
+  #select-all-btn,#delete-selected-btn{flex:1}
+
+  /* Share result row */
+  .detail-share-result{flex-direction:column;padding:10px 14px}
+  .detail-share-result input{width:100%}
+  #copy-share-btn{width:100%}
+
+  /* Detail photos grid */
+  .detail-photos-grid{padding:12px 14px 80px}
+}
+
+/* Touch screens: always show share action buttons (no hover needed) */
+@media (hover:none){
+  .share-actions{opacity:1;transform:none}
+  .share-action-btn{width:36px;height:36px;min-width:36px;font-size:1rem}
+}
+
+/* Very small phones */
+@media (max-width:380px){
+  .share-photos-grid{grid-template-columns:repeat(1,minmax(0,1fr))}
+  .photos-grid{grid-template-columns:1fr}
+  /* Hide nav labels, show icons only */
+  .dash-nav-item span,.dash-logout span{display:none}
+}
