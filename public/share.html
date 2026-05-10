@@ -83,6 +83,17 @@
       <button id="lightbox-next" class="lightbox-nav next" type="button" aria-label="Next">›</button>
     </div>
 
+    <!-- Video reel (TikTok / YouTube Shorts style) -->
+    <div id="video-reel" class="video-reel hidden" role="dialog" aria-modal="true" aria-label="Video reel">
+      <div class="reel-header">
+        <button id="reel-close" class="reel-close" type="button" aria-label="Close reel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <span class="reel-title-bar">Videos</span>
+      </div>
+      <div id="reel-track" class="reel-track"></div>
+    </div>
+
     <script src="/share.js"></script>
   </body>
 </html>

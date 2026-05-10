@@ -13,6 +13,11 @@ const lightboxFigure = lightbox.querySelector(".lightbox-figure");
 const lightboxDownload = document.getElementById("lightbox-download");
 const lightboxLoading = document.getElementById("lightbox-loading");
 
+// Video reel elements
+const videoReel = document.getElementById("video-reel");
+const reelTrack = document.getElementById("reel-track");
+const reelCloseBtn = document.getElementById("reel-close");
+
 let sharedPhotos = [];
 let activePhotoIndex = -1;
 let lastWheelNavigateAt = 0;
@@ -265,14 +270,13 @@ function renderSharedPhotos(photos) {
       });
     } else if (isVideo) {
       image.addEventListener("load", scheduleMasonryLayout);
-      image.addEventListener("click", () => {
-        openLightboxById(photo.id);
-      });
-      if (videoOverlay) {
-        videoOverlay.addEventListener("click", () => {
-          openLightboxById(photo.id);
-        });
-      }
+      // Open reel at the right video index
+      const openThisReel = () => {
+        const videoIndex = sharedPhotos.filter((p) => isVideoMimeType(p.mimeType)).findIndex((p) => p.id === photo.id);
+        openReel(Math.max(0, videoIndex));
+      };
+      image.addEventListener("click", openThisReel);
+      if (videoOverlay) videoOverlay.addEventListener("click", openThisReel);
     } else {
       image.style.cursor = "default";
       image.addEventListener("load", scheduleMasonryLayout);
@@ -514,6 +518,138 @@ function handleLightboxTouchEnd() {
   resetLightboxSwipePosition(true);
 }
 
+// ─── Video Reel ───────────────────────────────────────────────────
+
+let reelVideos = [];
+let reelObserver = null;
+let reelMuted = false;
+let reelHistoryEntry = false;
+
+function buildReelItem(photo, index) {
+  const item = document.createElement("div");
+  item.className = "reel-item";
+  item.dataset.index = index;
+
+  const vid = document.createElement("video");
+  vid.className = "reel-video";
+  vid.src = photo.viewUrl;
+  vid.preload = "none";
+  vid.loop = true;
+  vid.playsInline = true;
+  vid.muted = reelMuted;
+
+  vid.addEventListener("loadedmetadata", () => {
+    if (vid.videoHeight > vid.videoWidth) item.classList.add("is-portrait");
+  }, { once: true });
+
+  const overlay = document.createElement("div");
+  overlay.className = "reel-overlay";
+
+  const nameEl = document.createElement("p");
+  nameEl.className = "reel-name";
+  nameEl.textContent = photo.originalName;
+
+  const sizeEl = document.createElement("p");
+  sizeEl.className = "reel-size";
+  sizeEl.textContent = formatBytes(photo.size);
+  overlay.appendChild(nameEl);
+  overlay.appendChild(sizeEl);
+
+  const actions = document.createElement("div");
+  actions.className = "reel-actions";
+
+  const likeBtn = document.createElement("button");
+  likeBtn.className = "reel-action-btn reel-like-btn";
+  likeBtn.type = "button";
+  likeBtn.setAttribute("aria-label", "Favourite");
+  likeBtn.innerHTML = "♡";
+  likeBtn.addEventListener("click", () => {
+    const liked = likeBtn.classList.toggle("is-active");
+    likeBtn.innerHTML = liked ? "♥" : "♡";
+  });
+
+  const muteBtn = document.createElement("button");
+  muteBtn.className = "reel-action-btn reel-mute-btn";
+  muteBtn.type = "button";
+  muteBtn.setAttribute("aria-label", "Toggle mute");
+  const mutedIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
+  const unmutedIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`;
+  muteBtn.innerHTML = reelMuted ? mutedIcon : unmutedIcon;
+  muteBtn.addEventListener("click", () => {
+    reelMuted = !reelMuted;
+    reelTrack.querySelectorAll(".reel-video").forEach((v) => { v.muted = reelMuted; });
+    muteBtn.innerHTML = reelMuted ? mutedIcon : unmutedIcon;
+  });
+
+  const dlBtn = document.createElement("a");
+  dlBtn.className = "reel-action-btn reel-download-btn";
+  dlBtn.href = photo.downloadUrl;
+  dlBtn.target = "_blank";
+  dlBtn.rel = "noopener";
+  dlBtn.setAttribute("aria-label", "Download");
+  dlBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="17" height="17"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+
+  actions.appendChild(likeBtn);
+  actions.appendChild(muteBtn);
+  actions.appendChild(dlBtn);
+
+  item.appendChild(vid);
+  item.appendChild(overlay);
+  item.appendChild(actions);
+  return item;
+}
+
+function openReel(startIndex = 0) {
+  const videos = sharedPhotos.filter((p) => isVideoMimeType(p.mimeType));
+  if (!videos.length) return;
+  reelVideos = videos;
+  reelTrack.innerHTML = "";
+  reelVideos.forEach((photo, i) => reelTrack.appendChild(buildReelItem(photo, i)));
+
+  if (reelObserver) reelObserver.disconnect();
+  reelObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      const v = entry.target.querySelector(".reel-video");
+      if (!v) return;
+      if (entry.intersectionRatio >= 0.6) {
+        v.preload = "auto";
+        v.play().catch(() => {});
+      } else {
+        v.pause();
+      }
+    });
+  }, { threshold: 0.6 });
+  reelTrack.querySelectorAll(".reel-item").forEach((item) => reelObserver.observe(item));
+
+  const target = reelTrack.children[startIndex];
+  if (target) target.scrollIntoView({ behavior: "instant" });
+
+  if (!reelHistoryEntry) {
+    window.history.pushState({ reel: true }, "", window.location.href);
+    reelHistoryEntry = true;
+  }
+  videoReel.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
+
+function closeReel({ fromPopState = false } = {}) {
+  if (!fromPopState && reelHistoryEntry) { window.history.back(); return; }
+  if (reelObserver) { reelObserver.disconnect(); reelObserver = null; }
+  reelTrack.querySelectorAll(".reel-video").forEach((v) => { v.pause(); v.src = ""; });
+  reelTrack.innerHTML = "";
+  videoReel.classList.add("hidden");
+  document.body.style.overflow = "";
+  if (fromPopState) reelHistoryEntry = false;
+}
+
+if (reelCloseBtn) reelCloseBtn.addEventListener("click", () => closeReel());
+document.addEventListener("keydown", (e) => {
+  if (!videoReel || videoReel.classList.contains("hidden")) return;
+  if (e.key === "Escape") closeReel();
+});
+
+// ─── Shared gallery ───────────────────────────────────────────────
+
 async function loadSharedGallery() {
   const token = window.location.pathname.split("/").filter(Boolean).pop();
 
@@ -566,6 +702,11 @@ lightbox.addEventListener("click", (event) => {
 });
 
 window.addEventListener("popstate", () => {
+  // Reel takes priority
+  if (!videoReel.classList.contains("hidden")) {
+    closeReel({ fromPopState: true });
+    return;
+  }
   if (!lightbox.classList.contains("hidden")) {
     closeLightbox({ fromPopState: true });
   }

@@ -40,11 +40,22 @@ const newCollectionRow = document.getElementById("new-collection-row");
 const cancelNewFolderBtn = document.getElementById("cancel-new-folder-btn");
 const shareResultRow = document.getElementById("share-result-row");
 
+// Dashboard lightbox
+const dashLightbox = document.getElementById("dash-lightbox");
+const dashLbImage = document.getElementById("dash-lb-image");
+const dashLbVideo = document.getElementById("dash-lb-video");
+const dashLbClose = document.getElementById("dash-lb-close");
+const dashLbPrev = document.getElementById("dash-lb-prev");
+const dashLbNext = document.getElementById("dash-lb-next");
+const dashLbDownload = document.getElementById("dash-lb-download");
+
 let currentPhotos = [];
 let currentFolders = [];
 let currentFolder = "";
 let authToken = "";
 let isUploading = false;
+let dashLbIndex = -1;
+let dashLbHistoryEntry = false;
 
 function normalizeToken(value) {
   if (typeof value !== "string") return "";
@@ -282,6 +293,12 @@ function backToCollections() {
 }
 
 window.addEventListener("popstate", (e) => {
+  // If the dashboard lightbox is open, close it and stay on current view
+  if (dashLightbox && !dashLightbox.classList.contains("hidden")) {
+    closeDashLightbox({ fromPopState: true });
+    return;
+  }
+
   const state = e.state;
   if (!state || state.view === "collections") {
     if (!viewCollectionDetail.classList.contains("hidden")) {
@@ -311,8 +328,9 @@ function renderPhotos(photos) {
     return;
   }
 
-  photos.forEach((photo) => {
+  photos.forEach((photo, photoIndex) => {
     const card = cardTemplate.content.cloneNode(true);
+    const article = card.querySelector(".photo-card");
     const image = card.querySelector(".photo-preview");
     const name = card.querySelector(".photo-name");
     const size = card.querySelector(".photo-size");
@@ -358,6 +376,12 @@ function renderPhotos(photos) {
     checkbox.value = photo.id;
     checkbox.addEventListener("change", () => {
       checkbox.closest(".photo-card").classList.toggle("is-selected", checkbox.checked);
+    });
+
+    // Tap card to open lightbox (not on checkbox or download)
+    article.addEventListener("click", (e) => {
+      if (e.target.closest(".photo-card-select-wrap") || e.target.closest(".download-btn")) return;
+      openDashLightbox(photoIndex);
     });
 
     photosGrid.appendChild(card);
@@ -711,5 +735,107 @@ copyShareButton.addEventListener("click", async () => {
     shareStatus.textContent = "Could not copy automatically. Please copy manually.";
   }
 });
+
+// ─── Dashboard lightbox ────────────────────────────────────────────
+
+function setDashLbPhoto(photo) {
+  if (!photo) return;
+  if (isVideoMimeType(photo.mimeType)) {
+    dashLbImage.src = "";
+    dashLbImage.classList.add("hidden");
+    dashLbVideo.src = appendAuthQuery(`/api/photos/${photo.id}/view`);
+    dashLbVideo.classList.remove("hidden");
+    dashLbVideo.load();
+    dashLbVideo.play().catch(() => {});
+  } else {
+    if (!dashLbVideo.paused) dashLbVideo.pause();
+    dashLbVideo.src = "";
+    dashLbVideo.classList.add("hidden");
+    dashLbImage.classList.remove("hidden");
+    dashLbImage.src = appendAuthQuery(`/api/photos/${photo.id}/view`);
+    dashLbImage.alt = photo.originalName;
+  }
+  if (dashLbDownload) {
+    dashLbDownload.href = appendAuthQuery(`/api/photos/${photo.id}/download`);
+  }
+}
+
+function openDashLightbox(index) {
+  if (!currentPhotos.length) return;
+  dashLbIndex = Math.max(0, Math.min(index, currentPhotos.length - 1));
+  if (!dashLbHistoryEntry) {
+    history.pushState({ dashLightbox: true }, "", location.href);
+    dashLbHistoryEntry = true;
+  }
+  setDashLbPhoto(currentPhotos[dashLbIndex]);
+  dashLightbox.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
+
+function closeDashLightbox({ fromPopState = false } = {}) {
+  if (!fromPopState && dashLbHistoryEntry) {
+    history.back();
+    return;
+  }
+  dashLightbox.classList.add("hidden");
+  dashLbImage.src = "";
+  dashLbImage.classList.remove("hidden");
+  if (dashLbVideo) {
+    dashLbVideo.pause();
+    dashLbVideo.src = "";
+    dashLbVideo.classList.add("hidden");
+  }
+  dashLbIndex = -1;
+  document.body.style.overflow = "";
+  if (fromPopState) dashLbHistoryEntry = false;
+}
+
+dashLbClose.addEventListener("click", () => closeDashLightbox());
+
+dashLbPrev.addEventListener("click", () => {
+  if (!currentPhotos.length || dashLbIndex === -1) return;
+  dashLbIndex = (dashLbIndex - 1 + currentPhotos.length) % currentPhotos.length;
+  setDashLbPhoto(currentPhotos[dashLbIndex]);
+});
+
+dashLbNext.addEventListener("click", () => {
+  if (!currentPhotos.length || dashLbIndex === -1) return;
+  dashLbIndex = (dashLbIndex + 1) % currentPhotos.length;
+  setDashLbPhoto(currentPhotos[dashLbIndex]);
+});
+
+dashLightbox.addEventListener("click", (e) => {
+  if (!e.target.closest(".dash-lb-figure, .dash-lb-nav, .dash-lb-close, .dash-lb-download")) {
+    closeDashLightbox();
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (!dashLightbox || dashLightbox.classList.contains("hidden")) return;
+  if (e.key === "Escape") { closeDashLightbox(); return; }
+  if (e.key === "ArrowRight") { dashLbNext.click(); return; }
+  if (e.key === "ArrowLeft") { dashLbPrev.click(); }
+});
+
+// touch swipe on dashboard lightbox
+(function () {
+  let sx = 0; let dx = 0; let sy = 0;
+  dashLightbox.addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 1) return;
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY; dx = 0;
+  }, { passive: true });
+  dashLightbox.addEventListener("touchmove", (e) => {
+    if (e.touches.length !== 1) return;
+    dx = e.touches[0].clientX - sx;
+    const dy = e.touches[0].clientY - sy;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 6) e.preventDefault();
+  }, { passive: false });
+  dashLightbox.addEventListener("touchend", () => {
+    if (Math.abs(dx) > 48) {
+      if (dx < 0) dashLbNext.click(); else dashLbPrev.click();
+    }
+    dx = 0;
+  });
+}());
 
 ensureAuthenticated();
