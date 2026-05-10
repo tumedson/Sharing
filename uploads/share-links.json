@@ -1,0 +1,28 @@
+[
+  {
+    "token": "498edcd213964736d340dd945476076cad6678974e75118b",
+    "photoIds": [
+      "cedfed74-0f3c-4b34-bf24-b6508cd4088b"
+    ],
+    "createdAt": "2026-03-22T16:06:18.148Z",
+    "expiresAt": "2026-03-22T18:06:18.148Z"
+  },
+  {
+    "token": "26bcfd0bad1032ae4238cb80a72839b8c9e484e066803d65",
+    "photoIds": [
+      "cedfed74-0f3c-4b34-bf24-b6508cd4088b"
+    ],
+    "createdAt": "2026-03-22T16:21:21.327Z",
+    "expiresAt": "2026-03-22T18:21:21.327Z"
+  },
+  {
+    "token": "54258bb1e2a9fcd12dea5950cd95fb22c21c762f351ff36d",
+    "shortCode": "copilot-test-p3nm",
+    "photoIds": [
+      "cedfed74-0f3c-4b34-bf24-b6508cd4088b"
+    ],
+    "folderNames": [],
+    "createdAt": "2026-05-03T13:52:33.710Z",
+    "expiresAt": "2026-05-06T13:52:33.710Z"
+  }
+]

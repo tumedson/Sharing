@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Moments by Edson</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Syne:wght@500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="share-page">
+    <div class="bg-grid" aria-hidden="true"></div>
+    <div class="bg-shape shape-one" aria-hidden="true"></div>
+    <div class="bg-shape shape-two" aria-hidden="true"></div>
+    <div class="bg-shape shape-three" aria-hidden="true"></div>
+
+    <section class="share-cover reveal">
+      <div class="share-cover-media">
+        <img id="share-cover-image" class="share-cover-image" alt="Gallery cover" onerror="this.style.display='none'" />
+        <div class="share-cover-overlay"></div>
+      </div>
+      <div class="share-cover-content">
+        <h1 id="share-folder-title" class="share-folder-title">Gallery</h1>
+        <a href="#gallery-section" class="cover-view-btn">View Gallery</a>
+      </div>
+      <a class="share-cover-brand" href="https://moments.businessbay.tech/" target="_blank" rel="noopener" aria-label="Moments by Edson — portfolio & contacts">
+        <span class="share-cover-brand-mark" aria-hidden="true">M</span>
+        <p class="share-cover-brand-name">Moments by Edson</p>
+      </a>
+    </section>
+
+    <main>
+      <section id="gallery-section" class="share-gallery">
+        <div class="gallery-sticky-bar">
+          <div class="gallery-sticky-left">
+            <h2 id="gallery-folder-name" class="gallery-folder-name">Gallery</h2>
+            <p class="gallery-brand-sub">Moments by Edson</p>
+          </div>
+        </div>
+        <div id="shared-photos-grid" class="share-photos-grid"></div>
+      </section>
+    </main>
+
+    <template id="shared-photo-template">
+      <article class="photo-card share-photo-card">
+        <div class="card-media-wrap">
+          <img class="photo-preview" alt="Shared photo preview" loading="lazy" />
+          <div class="video-play-overlay" aria-hidden="true">
+            <svg class="video-play-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="24" cy="24" r="24" fill="rgba(0,0,0,0.52)"/>
+              <polygon points="19,14 38,24 19,34" fill="#fff"/>
+            </svg>
+          </div>
+        </div>
+        <div class="photo-meta">
+          <p class="photo-name"></p>
+          <p class="photo-size"></p>
+        </div>
+        <div class="share-actions" role="group" aria-label="Photo actions">
+          <button class="share-action-btn share-like-btn" type="button" aria-label="Favorite">♡</button>
+          <a class="share-action-btn share-download-btn" target="_blank" rel="noopener" aria-label="Download file">↓</a>
+          <button class="share-action-btn share-share-btn" type="button" aria-label="Copy link">↗</button>
+        </div>
+      </article>
+    </template>
+
+    <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true" aria-label="Media preview">
+      <button id="lightbox-close" class="lightbox-close" type="button" aria-label="Close">x</button>
+      <a id="lightbox-download" class="lightbox-download" target="_blank" rel="noopener" aria-label="Download current file">Download</a>
+      <button id="lightbox-prev" class="lightbox-nav prev" type="button" aria-label="Previous">‹</button>
+      <figure class="lightbox-figure">
+        <div id="lightbox-loading" class="lightbox-loading" aria-hidden="true">
+          <div class="lightbox-spinner"></div>
+        </div>
+        <img id="lightbox-image" alt="" />
+        <video id="lightbox-video" preload="metadata" controls playsinline></video>
+        <figcaption id="lightbox-caption"></figcaption>
+      </figure>
+      <button id="lightbox-next" class="lightbox-nav next" type="button" aria-label="Next">›</button>
+    </div>
+
+    <script src="/share.js"></script>
+  </body>
+</html>

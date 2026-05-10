@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Moments by Edson</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Syne:wght@500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-grid" aria-hidden="true"></div>
+    <div class="bg-shape shape-one" aria-hidden="true"></div>
+    <div class="bg-shape shape-two" aria-hidden="true"></div>
+    <div class="bg-shape shape-three" aria-hidden="true"></div>
+
+    <main class="layout app-shell" id="auth-card-wrap">
+      <section id="auth-card" class="card auth-panel reveal">
+        <div class="brand-row">
+          <div class="brand-badge">M</div>
+          <div>
+            <p class="eyebrow">Moments by Edson</p>
+            <p class="microcopy">Premium delivery for your client galleries.</p>
+          </div>
+        </div>
+
+        <div class="auth-copy">
+          <div>
+            <h1>Your gallery, delivered with intention.</h1>
+            <p class="subtitle">Upload originals, organise into folders, and share private expiring links — all from one clean space.</p>
+          </div>
+          <div class="auth-pills" aria-hidden="true">
+            <span>Original quality</span>
+            <span>Expiring links</span>
+            <span>Folder sharing</span>
+          </div>
+        </div>
+
+        <form id="login-form" class="login-form auth-form">
+          <input id="username-input" type="text" autocomplete="username" placeholder="Username" required />
+          <div class="password-wrap">
+            <input
+              id="password-input"
+              type="password"
+              autocomplete="current-password"
+              placeholder="Password"
+              required
+            />
+            <button id="toggle-password-btn" class="ghost-btn" type="button" aria-pressed="false">
+              Show
+            </button>
+          </div>
+          <button type="submit">Enter Dashboard</button>
+        </form>
+
+        <div class="metric-row" aria-hidden="true">
+          <article>
+              <strong>Fast delivery</strong>
+            <span>Upload once, share instantly with any client.</span>
+          </article>
+          <article>
+            <strong>Cinematic UI</strong>
+            <span>Dark editorial surfaces that let photos shine.</span>
+          </article>
+          <article>
+            <strong>Private by default</strong>
+            <span>Owner-only controls with expiring share links.</span>
+          </article>
+        </div>
+
+        <p id="auth-status" class="status" aria-live="polite"></p>
+      </section>
+
+      <div id="owner-dashboard" class="hidden dash-shell">
+
+        <aside class="dash-sidebar">
+          <div class="dash-sidebar-top">
+            <div class="dash-brand">
+              <div class="brand-badge">M</div>
+            </div>
+            <nav class="dash-nav" aria-label="Dashboard">
+              <button class="dash-nav-item is-active" data-view="collections" type="button">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                <span>Collections</span>
+              </button>
+              <a class="dash-nav-item" href="https://moments.businessbay.tech/" target="_blank" rel="noopener">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                <span>Homepage</span>
+              </a>
+            </nav>
+          </div>
+          <div class="dash-sidebar-bottom">
+            <button id="logout-btn" class="dash-nav-item dash-logout" type="button">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              <span>Log out</span>
+            </button>
+          </div>
+        </aside>
+
+        <div class="dash-main">
+
+          <!-- Collections view -->
+          <div id="view-collections" class="dash-view">
+            <div class="dash-topbar">
+              <h2 class="dash-view-title">Collections</h2>
+              <div class="dash-topbar-right">
+                <button id="new-collection-btn" class="btn-primary" type="button">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  New Collection
+                </button>
+              </div>
+            </div>
+            <div id="new-collection-row" class="new-collection-row hidden">
+              <input id="new-folder-input" type="text" placeholder="Collection name…" maxlength="80" />
+              <button id="create-folder-btn" class="btn-primary" type="button">Create</button>
+              <button id="cancel-new-folder-btn" class="ghost-btn" type="button">Cancel</button>
+            </div>
+            <p id="collections-status" class="status" style="padding:0 28px" aria-live="polite"></p>
+            <div id="collections-grid" class="collections-grid"></div>
+          </div>
+
+          <!-- Collection detail view -->
+          <div id="view-collection-detail" class="dash-view hidden">
+            <div class="dash-topbar">
+              <div class="dash-topbar-left">
+                <button id="back-btn" class="dash-back-btn ghost-btn" type="button">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+                  Collections
+                </button>
+                <h2 id="detail-folder-name" class="dash-view-title"></h2>
+              </div>
+              <div class="dash-topbar-right">
+                <button id="share-folder-btn" class="ghost-btn" type="button">Share collection</button>
+                <button id="upload-toggle-btn" class="btn-primary" type="button">Upload</button>
+              </div>
+            </div>
+
+            <div id="upload-panel" class="upload-panel hidden">
+              <form id="upload-form" class="upload-form">
+                <label class="file-input-wrap" for="photo-input">
+                  <input id="photo-input" type="file" name="photos" multiple required />
+                  <span>Select files for instant upload</span>
+                  <small>Drag in photos or tap to browse</small>
+                </label>
+              </form>
+              <p id="status" class="status" aria-live="polite"></p>
+            </div>
+
+            <div class="detail-toolbar">
+              <div class="detail-toolbar-left">
+                <button id="select-all-btn" class="ghost-btn" type="button">Select all</button>
+                <button id="delete-selected-btn" class="ghost-btn danger-ghost" type="button">Delete</button>
+              </div>
+              <div class="detail-share-row">
+                <span class="detail-share-label">Expires in</span>
+                <input id="expiry-hours" type="number" min="1" max="8760" value="720" />
+                <span class="detail-share-unit">h</span>
+                <button id="create-share-btn" class="btn-primary" type="button">Create Share Link</button>
+              </div>
+            </div>
+            <div id="share-result-row" class="detail-share-result hidden">
+              <input id="share-url" type="text" readonly placeholder="Share link will appear here" />
+              <button id="copy-share-btn" class="ghost-btn" type="button">Copy</button>
+            </div>
+            <p id="share-status" class="status" style="padding:4px 28px" aria-live="polite"></p>
+            <div id="photos-grid" class="photos-grid detail-photos-grid"></div>
+          </div>
+
+        </div>
+      </div>
+    </main>
+
+    <template id="photo-card-template">
+      <article class="photo-card">
+        <img class="photo-preview" alt="Uploaded photo preview" loading="lazy" />
+        <div class="photo-meta">
+          <p class="photo-name"></p>
+          <p class="photo-size"></p>
+          <p class="photo-folder"></p>
+        </div>
+        <label class="select-row">
+          <input class="photo-select" type="checkbox" />
+          <span>Select</span>
+        </label>
+        <a class="download-btn" target="_blank" rel="noopener">Download</a>
+      </article>
+    </template>
+
+    <script src="script.js"></script>
+  </body>
+</html>
