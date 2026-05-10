@@ -28,6 +28,7 @@ const THUMB_DIR = path.join(UPLOAD_DIR, "thumbs");
 const METADATA_FILE = path.join(UPLOAD_DIR, "metadata.json");
 const SHARE_LINKS_FILE = path.join(UPLOAD_DIR, "share-links.json");
 const FOLDERS_FILE = path.join(UPLOAD_DIR, "folders.json");
+const FOLDER_META_FILE = path.join(UPLOAD_DIR, "folder-meta.json");
 const ownerSessions = new Map();
 const DEFAULT_FOLDER = "General";
 const SHARE_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
@@ -350,6 +351,20 @@ async function writeShareLinks(links) {
   await fsp.writeFile(SHARE_LINKS_FILE, JSON.stringify(links, null, 2), "utf8");
 }
 
+async function readFolderMeta() {
+  try {
+    const text = await fsp.readFile(FOLDER_META_FILE, "utf8");
+    const data = JSON.parse(text);
+    return (data && typeof data === "object" && !Array.isArray(data)) ? data : {};
+  } catch {
+    return {};
+  }
+}
+
+async function writeFolderMeta(meta) {
+  await fsp.writeFile(FOLDER_META_FILE, JSON.stringify(meta, null, 2), "utf8");
+}
+
 async function readFolders() {
   const folders = await readJsonArray(FOLDERS_FILE);
   const normalized = folders.map(normalizeFolderName).filter(Boolean);
@@ -526,8 +541,35 @@ app.get("/api/photos", requireOwnerAuth, async (_req, res, next) => {
 
 app.get("/api/folders", requireOwnerAuth, async (_req, res, next) => {
   try {
-    const folders = await getFolderCatalog();
-    res.json({ folders });
+    const [folders, meta] = await Promise.all([getFolderCatalog(), readFolderMeta()]);
+    const coverPhotoIds = {};
+    for (const f of folders) {
+      if (meta[f]?.coverPhotoId) coverPhotoIds[f] = meta[f].coverPhotoId;
+    }
+    res.json({ folders, coverPhotoIds });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/folders/:folder/cover", requireOwnerAuth, async (req, res, next) => {
+  try {
+    const folderName = normalizeFolderName(req.params.folder);
+    const photoId = typeof req.body?.photoId === "string" ? req.body.photoId.trim() : "";
+    if (!folderName || !photoId) {
+      res.status(400).json({ error: "Folder name and photoId are required." });
+      return;
+    }
+    const entries = await readMetadata();
+    const photo = entries.find((e) => e.id === photoId && (e.folder || DEFAULT_FOLDER) === folderName);
+    if (!photo) {
+      res.status(404).json({ error: "Photo not found in this folder." });
+      return;
+    }
+    const meta = await readFolderMeta();
+    meta[folderName] = { ...(meta[folderName] || {}), coverPhotoId: photoId };
+    await writeFolderMeta(meta);
+    res.json({ message: "Cover photo updated.", coverPhotoId: photoId });
   } catch (error) {
     next(error);
   }
@@ -774,9 +816,9 @@ app.post("/api/share-links", requireOwnerAuth, async (req, res, next) => {
       return;
     }
 
-    const hours = Number(expiresInHours ?? 72);
-    if (!Number.isFinite(hours) || hours < 1 || hours > 8760) {
-      res.status(400).json({ error: "Expiry must be between 1 and 8760 hours." });
+    const hours = Number(expiresInHours ?? 8760);
+    if (!Number.isFinite(hours) || hours < 1 || hours > 17520) {
+      res.status(400).json({ error: "Expiry must be between 1 and 17520 hours (2 years)." });
       return;
     }
 

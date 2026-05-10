@@ -51,6 +51,7 @@ const dashLbDownload = document.getElementById("dash-lb-download");
 
 let currentPhotos = [];
 let currentFolders = [];
+let currentCoverPhotoIds = {}; // { folderName: photoId }
 let currentFolder = "";
 let authToken = "";
 let isUploading = false;
@@ -203,16 +204,17 @@ function renderEmptyState(text) {
   photosGrid.innerHTML = `<p class="empty">${text}</p>`;
 }
 
-function renderFolders(folders) {
-  const deduped = [...new Set((folders || []).filter(Boolean))];
+function renderFolders(result) {
+  const deduped = [...new Set((result.folders || []).filter(Boolean))];
   currentFolders = deduped.length ? deduped : ["General"];
+  currentCoverPhotoIds = result.coverPhotoIds || {};
 }
 
 async function loadFolders() {
   const response = await authorizedFetch("/api/folders");
   if (!response.ok) return;
   const result = await parseJsonResponse(response);
-  renderFolders(result.folders || ["General"]);
+  renderFolders(result);
 }
 
 async function loadCollections() {
@@ -245,7 +247,11 @@ function renderCollections(photos) {
   }
 
   entries.forEach(([folderName, folderPhotos]) => {
-    const coverPhoto = folderPhotos.find((p) => isImageMimeType(p.mimeType)) || folderPhotos[0];
+    // Use saved cover photo if set, otherwise fall back to first image
+    const savedCoverId = currentCoverPhotoIds[folderName];
+    const coverPhoto = (savedCoverId && folderPhotos.find((p) => p.id === savedCoverId))
+      || folderPhotos.find((p) => isImageMimeType(p.mimeType))
+      || folderPhotos[0];
     const card = document.createElement("article");
     card.className = "collection-card";
 
@@ -378,14 +384,50 @@ function renderPhotos(photos) {
       checkbox.closest(".photo-card").classList.toggle("is-selected", checkbox.checked);
     });
 
-    // Tap card to open lightbox (not on checkbox or download)
+    // Set as cover button — only show for images
+    const setCoverBtn = article.querySelector(".set-cover-btn");
+    if (setCoverBtn && isImage) {
+      setCoverBtn.style.display = "flex";
+      const isCurrent = currentCoverPhotoIds[currentFolder || "General"] === photo.id;
+      if (isCurrent) setCoverBtn.classList.add("is-cover");
+      setCoverBtn.setAttribute("title", isCurrent ? "Current cover" : "Set as cover");
+      setCoverBtn.addEventListener("click", async () => {
+        await setCoverPhoto(photo.id);
+      });
+    }
+
+    // Tap card to open lightbox (not on checkbox or download or set-cover)
     article.addEventListener("click", (e) => {
-      if (e.target.closest(".photo-card-select-wrap") || e.target.closest(".download-btn")) return;
+      if (e.target.closest(".photo-card-select-wrap") || e.target.closest(".download-btn") || e.target.closest(".set-cover-btn")) return;
       openDashLightbox(photoIndex);
     });
 
     photosGrid.appendChild(card);
   });
+}
+
+async function setCoverPhoto(photoId) {
+  const folder = currentFolder || "General";
+  try {
+    const response = await authorizedFetch(`/api/folders/${encodeURIComponent(folder)}/cover`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ photoId })
+    });
+    const result = await parseJsonResponse(response);
+    if (!response.ok) throw new Error(result.error || "Failed to set cover.");
+    currentCoverPhotoIds[folder] = photoId;
+    // Refresh visual state of all set-cover buttons in this view
+    document.querySelectorAll(".set-cover-btn").forEach((btn) => btn.classList.remove("is-cover"));
+    const allCards = photosGrid.querySelectorAll(".photo-card");
+    allCards.forEach((card) => {
+      const cb = card.querySelector(".photo-select");
+      const btn = card.querySelector(".set-cover-btn");
+      if (btn && cb && cb.value === photoId) btn.classList.add("is-cover");
+    });
+  } catch (e) {
+    shareStatus.textContent = e.message;
+  }
 }
 
 function getSelectedPhotoIds() {

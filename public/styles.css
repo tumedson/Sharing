@@ -440,12 +440,35 @@ button[type="submit"]:hover,.download-btn:hover,#create-folder-btn:hover,
 }
 .photo-card .photo-size{margin:2px 0 0;font-size:0.68rem;color:rgba(255,255,255,0.55)}
 
+/* Set-as-cover star button */
+.set-cover-btn {
+  position: absolute;
+  bottom: 10px;
+  right: 52px;
+  width: 34px;
+  height: 34px;
+  min-height: 0;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: rgba(12,11,10,0.55);
+  backdrop-filter: blur(6px);
+  border: 1.5px solid rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.set-cover-btn:hover{background:rgba(200,133,74,0.35);border-color:var(--accent);color:var(--accent)}
+.set-cover-btn.is-cover{background:rgba(200,133,74,0.3);border-color:var(--accent);color:var(--accent)}
+.set-cover-btn.is-cover svg{fill:var(--accent);stroke:var(--accent)}
+
 /* Download icon button */
 .download-btn {
   position: absolute;
   bottom: 10px;
-  right: 10px;
-  width: 34px;
+  right: 10px;  width: 34px;
   height: 34px;
   min-height: 0;
   padding: 0;
