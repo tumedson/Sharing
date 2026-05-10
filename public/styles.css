@@ -396,7 +396,7 @@ button[type="submit"]:hover,.download-btn:hover,#create-folder-btn:hover,
 /* Photos grid (dashboard) */
 .photos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
 
-/* Photo card — modern overlay style */
+/* Photo card — modern overlay style (DASHBOARD ONLY via .detail-photos-grid parent) */
 .photo-card {
   position: relative;
   aspect-ratio: 1 / 1;
@@ -410,7 +410,8 @@ button[type="submit"]:hover,.download-btn:hover,#create-folder-btn:hover,
 .photo-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-md)}
 .photo-card.is-selected{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-glow)}
 
-.photo-preview{
+/* Dashboard card image — absolute fill */
+.photo-card .photo-preview{
   position:absolute;inset:0;width:100%;height:100%;
   object-fit:cover;display:block;
   background:rgba(255,255,255,0.04);
@@ -540,64 +541,80 @@ body.share-page {
 
 .share-layout{width:min(1420px,96vw);margin:40px auto 56px;display:grid;gap:32px}
 
-/* Cover / hero — compact banner (not full viewport) */
+/* Cover / hero — full viewport */
 .share-cover {
   position: relative;
   width: 100%;
-  height: clamp(220px, 32vw, 340px);
-  min-height: 220px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: flex-end;
+  height: 100vh;
+  min-height: 520px;
+  display: grid;
+  grid-template-rows: 1fr auto;
   overflow: hidden;
   background: #0a0908;
 }
 .share-cover::before{display:none}
 .share-cover-media{position:absolute;inset:0}
-.share-cover-image{width:100%;height:100%;object-fit:cover;object-position:center 30%}
-.share-cover-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.08) 0%,rgba(0,0,0,0.62) 70%,rgba(0,0,0,0.84) 100%)}
+.share-cover-image{width:100%;height:100%;object-fit:cover;object-position:center top}
+.share-cover-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.12) 0%,rgba(0,0,0,0.08) 40%,rgba(0,0,0,0.7) 100%)}
 .share-cover-content {
   position: relative;
   z-index: 2;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 0 28px 28px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 22px;
+  padding: 0 28px;
 }
 .share-folder-title {
   margin: 0;
   font-family: "Syne", sans-serif;
-  font-size: clamp(1.8rem, 6vw, 3.6rem);
+  font-size: clamp(3.2rem, 10vw, 7rem);
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #fff;
   line-height: 1;
-  text-shadow: 0 2px 20px rgba(0,0,0,0.45);
+  text-shadow: 0 2px 40px rgba(0,0,0,0.35);
 }
-.cover-view-btn { display: none }
+.cover-view-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 34px;
+  border: 1px solid rgba(255,255,255,0.5);
+  border-radius: 2px;
+  background: transparent;
+  color: rgba(255,255,255,0.88);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.cover-view-btn:hover{background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.85)}
 .share-cover-brand {
-  position: absolute;
+  position: relative;
   z-index: 2;
-  top: 14px;
-  right: 18px;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
   gap: 7px;
+  padding-bottom: 32px;
   text-decoration: none;
   transition: opacity 0.2s ease;
 }
 .share-cover-brand:hover{opacity:0.75}
 .share-cover-brand-mark {
-  width: 30px;
-  height: 30px;
+  width: 38px;
+  height: 38px;
   display: grid;
   place-items: center;
-  border-radius: 7px;
-  font-size: 0.66rem;
+  border-radius: 9px;
+  font-size: 0.72rem;
   font-weight: 800;
   color: #fff;
   background: linear-gradient(145deg, var(--accent), var(--accent-strong));
@@ -605,11 +622,11 @@ body.share-page {
 }
 .share-cover-brand-name {
   margin: 0;
-  font-size: 0.6rem;
-  letter-spacing: 0.22em;
+  font-size: 0.62rem;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
   font-weight: 700;
-  color: rgba(255,255,255,0.6);
+  color: rgba(255,255,255,0.5);
 }
 
 /* Gallery section */
@@ -653,8 +670,27 @@ body.share-page {
   gap: 3px;
   padding: 3px;
 }
-.share-photo-card{margin:0;border:0;border-radius:0;background:transparent;box-shadow:none;display:block;position:relative;overflow:hidden}
+/* Reset all dashboard photo-card overrides for share cards */
+.share-photo-card{
+  margin:0;border:0;border-radius:0;background:transparent;
+  box-shadow:none;display:block;position:relative;overflow:hidden;
+  aspect-ratio: unset;
+  cursor: default;
+}
 .share-photo-card:hover{transform:none;box-shadow:none}
+
+/* Share card image — normal flow so masonry can measure it */
+.share-photo-card .photo-preview{
+  position:relative !important;
+  inset:unset !important;
+  width:100%;
+  height:auto !important;
+  display:block;
+  object-fit:cover;
+  cursor:pointer;
+  background:rgba(255,255,255,0.04);
+  transition:none;
+}
 
 /* Card media wrap */
 .card-media-wrap{position:relative;display:block;overflow:hidden;line-height:0;border-radius:0}
@@ -853,7 +889,7 @@ body.share-page {
   .layout{margin:14px auto 28px}
   .card,.gallery,.dashboard-hero,.auth-panel{padding:18px;border-radius:var(--radius-lg)}
   h1{font-size:clamp(1.9rem,9vw,3rem)}
-  .share-cover{min-height:160px}
+  .share-cover{min-height:100svh}
   .share-folder-title{font-size:clamp(2.8rem,11vw,5rem)}
   .login-form,.upload-form,.folder-tools,.manage-tools,.share-controls,.share-result,.password-wrap{flex-direction:column}
   .password-wrap,.login-form input,.compact-field,.file-input-wrap{width:100%;min-width:0}

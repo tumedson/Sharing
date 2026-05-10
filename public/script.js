@@ -764,17 +764,41 @@ shareFolderButton.addEventListener("click", async () => {
   }
 });
 
+async function copyToClipboard(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch { /* fall through */ }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.cssText = "position:absolute;left:-9999px;top:-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, ta.value.length);
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 copyShareButton.addEventListener("click", async () => {
   if (!shareUrlInput.value) {
     shareStatus.textContent = "Create a share link first.";
     return;
   }
-
-  try {
-    await navigator.clipboard.writeText(shareUrlInput.value);
-    shareStatus.textContent = "Share link copied to clipboard.";
-  } catch {
-    shareStatus.textContent = "Could not copy automatically. Please copy manually.";
+  const ok = await copyToClipboard(shareUrlInput.value);
+  if (ok) {
+    copyShareButton.textContent = "Copied!";
+    shareStatus.textContent = "Share link copied.";
+    setTimeout(() => { copyShareButton.textContent = "Copy"; }, 2000);
+  } else {
+    shareStatus.textContent = "Could not copy — please select the link and copy manually.";
   }
 });
 
