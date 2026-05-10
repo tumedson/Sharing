@@ -356,6 +356,9 @@ function renderPhotos(photos) {
     folder.textContent = `${photo.folder || "General"}`;
     download.href = appendAuthQuery(`/api/photos/${photo.id}/download`);
     checkbox.value = photo.id;
+    checkbox.addEventListener("change", () => {
+      checkbox.closest(".photo-card").classList.toggle("is-selected", checkbox.checked);
+    });
 
     photosGrid.appendChild(card);
   });
@@ -591,6 +594,7 @@ selectAllButton.addEventListener("click", () => {
   const allChecked = boxes.every((box) => box.checked);
   boxes.forEach((box) => {
     box.checked = !allChecked;
+    box.closest(".photo-card").classList.toggle("is-selected", !allChecked);
   });
 });
 

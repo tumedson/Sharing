@@ -177,16 +177,22 @@
     <template id="photo-card-template">
       <article class="photo-card">
         <img class="photo-preview" alt="Uploaded photo preview" loading="lazy" />
-        <div class="photo-meta">
-          <p class="photo-name"></p>
-          <p class="photo-size"></p>
-          <p class="photo-folder"></p>
-        </div>
-        <label class="select-row">
+        <label class="photo-card-select-wrap" aria-label="Select photo">
           <input class="photo-select" type="checkbox" />
-          <span>Select</span>
+          <span class="photo-card-checkbox-ui" aria-hidden="true">
+            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="2,6 5,9 10,3"/></svg>
+          </span>
         </label>
-        <a class="download-btn" target="_blank" rel="noopener">Download</a>
+        <div class="photo-card-overlay">
+          <div class="photo-card-info">
+            <p class="photo-name"></p>
+            <p class="photo-size"></p>
+            <p class="photo-folder" style="display:none"></p>
+          </div>
+          <a class="download-btn" target="_blank" rel="noopener" aria-label="Download">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="17" height="17"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </a>
+        </div>
       </article>
     </template>
 

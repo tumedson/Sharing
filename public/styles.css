@@ -394,25 +394,108 @@ button[type="submit"]:hover,.download-btn:hover,#create-folder-btn:hover,
 .compact-field{min-width:210px}
 
 /* Photos grid (dashboard) */
-.photos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.photos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+
+/* Photo card — modern overlay style */
 .photo-card {
-  border: 1px solid var(--line);
+  position: relative;
+  aspect-ratio: 1 / 1;
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: rgba(255,255,255,0.04);
-  display: grid;
-  grid-template-rows: 172px auto auto auto;
-  transition: transform 0.22s ease, box-shadow 0.22s ease;
+  border: 1.5px solid var(--line);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .photo-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-md)}
-.photo-preview{width:100%;height:100%;object-fit:cover;background:rgba(255,255,255,0.04)}
-.photo-meta{padding:10px 12px 4px}
-.photo-name{margin:0;font-size:0.92rem;font-weight:600;color:var(--text);word-break:break-word}
-.photo-size{margin:3px 0 0;font-size:0.78rem;color:var(--muted)}
-.photo-folder{margin:3px 0 0;font-size:0.74rem;color:var(--accent)}
-.select-row{display:flex;align-items:center;gap:8px;padding:4px 12px 0;color:var(--muted-strong);font-size:0.82rem}
-.select-row input{accent-color:var(--accent);min-height:auto;width:auto}
-.download-btn{margin:10px 12px 12px;text-align:center;display:block}
+.photo-card.is-selected{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-glow)}
+
+.photo-preview{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;display:block;
+  background:rgba(255,255,255,0.04);
+  transition:transform 0.35s ease;
+}
+.photo-card:hover .photo-preview{transform:scale(1.04)}
+
+/* Overlay gradient + info + download */
+.photo-card-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 10px;
+  background: linear-gradient(transparent 40%, rgba(0,0,0,0.72) 100%);
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+.photo-card:hover .photo-card-overlay,
+.photo-card.is-selected .photo-card-overlay{opacity:1}
+
+.photo-card-info{flex:1;display:flex;flex-direction:column;justify-content:flex-end;min-width:0;padding-right:36px}
+.photo-card .photo-name{
+  margin:0;font-size:0.78rem;font-weight:600;color:#fff;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.photo-card .photo-size{margin:2px 0 0;font-size:0.68rem;color:rgba(255,255,255,0.55)}
+
+/* Download icon button */
+.download-btn {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  min-height: 0;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  box-shadow: 0 4px 12px var(--accent-glow);
+  transition: background 0.15s ease, transform 0.15s ease;
+  flex-shrink: 0;
+}
+.download-btn:hover{background:var(--accent-strong);transform:translateY(-1px)}
+
+/* Checkbox overlay */
+.photo-card-select-wrap {
+  position: absolute;
+  top: 9px;
+  left: 9px;
+  z-index: 2;
+  cursor: pointer;
+  line-height: 0;
+}
+.photo-card-select-wrap input{
+  position:absolute;opacity:0;width:0;height:0;min-height:0;
+}
+.photo-card-checkbox-ui {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1.5px solid rgba(255,255,255,0.55);
+  background: rgba(12,11,10,0.45);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 0.18s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.photo-card-checkbox-ui svg{width:10px;height:10px;color:#fff;opacity:0;transition:opacity 0.15s ease}
+.photo-card:hover .photo-card-checkbox-ui,
+.photo-card.is-selected .photo-card-checkbox-ui{opacity:1}
+.photo-card-select-wrap input:checked ~ .photo-card-checkbox-ui{
+  background:var(--accent);border-color:var(--accent);
+}
+.photo-card-select-wrap input:checked ~ .photo-card-checkbox-ui svg{opacity:1}
+
 .empty{border:1px dashed var(--line-strong);border-radius:var(--radius-md);padding:24px;text-align:center;color:var(--muted)}
 
 /* Animations */
@@ -766,7 +849,8 @@ body.share-page {
   .share-cover{min-height:100svh}
   .share-folder-title{font-size:clamp(2.8rem,11vw,5rem)}
   .login-form,.upload-form,.folder-tools,.manage-tools,.share-controls,.share-result,.password-wrap{flex-direction:column}
-  .password-wrap,.login-form input,.compact-field,.file-input-wrap,button,.download-btn,.lightbox-download{width:100%;min-width:0}
+  .password-wrap,.login-form input,.compact-field,.file-input-wrap{width:100%;min-width:0}
+  .lightbox-download{width:auto;min-width:110px}
   .share-controls input{width:100%}
   .photos-grid{grid-template-columns:1fr 1fr;gap:10px}
   .photo-card{grid-template-rows:148px auto auto auto}
@@ -881,10 +965,13 @@ body.share-page {
   .detail-photos-grid{padding:12px 14px 80px}
 }
 
-/* Touch screens: always show share action buttons (no hover needed) */
+/* Touch screens: always show overlays (no hover needed) */
 @media (hover:none){
   .share-actions{opacity:1;transform:none}
   .share-action-btn{width:36px;height:36px;min-width:36px;font-size:1rem}
+  .photo-card-overlay{opacity:1}
+  .photo-card-checkbox-ui{opacity:1}
+  .photo-card:hover .photo-preview{transform:none}
 }
 
 /* Very small phones */
