@@ -873,7 +873,7 @@ app.get("/share/:token", (_req, res) => {
 app.get("/api/share/:token", async (req, res, next) => {
   try {
     const share = await resolveShare(req.params.token);
-    const entries = await readMetadata();
+    const [entries, folderMeta] = await Promise.all([readMetadata(), readFolderMeta()]);
     const allowed = new Set(share.photoIds);
 
     const photos = entries
@@ -891,11 +891,20 @@ app.get("/api/share/:token", async (req, res, next) => {
         downloadUrl: `/api/share/${share.token}/photos/${photo.id}/download`
       }));
 
+    // Determine cover photo: use saved folder-meta cover if it's in the share, else first image
+    const folders = [...new Set(photos.map((photo) => photo.folder))];
+    const primaryFolder = folders[0] || "";
+    const savedCoverId = folderMeta[primaryFolder]?.coverPhotoId;
+    const coverPhotoId = (savedCoverId && allowed.has(savedCoverId))
+      ? savedCoverId
+      : (photos.find((p) => p.mimeType && p.mimeType.startsWith("image/"))?.id || null);
+
     res.json({
       createdAt: share.createdAt,
       expiresAt: share.expiresAt,
       photoCount: photos.length,
-      folders: [...new Set(photos.map((photo) => photo.folder))],
+      folders,
+      coverPhotoId,
       photos
     });
   } catch (error) {

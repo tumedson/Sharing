@@ -290,14 +290,14 @@ function renderSharedPhotos(photos) {
   });
 }
 
-function renderCoverPhoto(photos) {
-  const firstImage = photos.find((photo) => isImageMimeType(photo.mimeType));
-  if (firstImage) {
-    coverImage.src = firstImage.viewUrl;
-    coverImage.alt = `${firstImage.originalName} cover preview`;
+function renderCoverPhoto(photos, coverPhotoId) {
+  const coverPhoto = (coverPhotoId && photos.find((p) => p.id === coverPhotoId))
+    || photos.find((photo) => isImageMimeType(photo.mimeType));
+  if (coverPhoto) {
+    coverImage.src = coverPhoto.viewUrl;
+    coverImage.alt = `${coverPhoto.originalName} cover preview`;
     return;
   }
-
   coverImage.src = "/video-fallback.jpg";
   coverImage.alt = "Gallery cover";
 }
@@ -668,7 +668,7 @@ async function loadSharedGallery() {
     const galleryFolderEl = document.getElementById("gallery-folder-name");
     if (galleryFolderEl) galleryFolderEl.textContent = folderName || "Gallery";
 
-    renderCoverPhoto(result.photos);
+    renderCoverPhoto(result.photos, result.coverPhotoId);
     renderSharedPhotos(result.photos);
   } catch (error) {
     if (shareFolderTitle) shareFolderTitle.textContent = "Link unavailable";
