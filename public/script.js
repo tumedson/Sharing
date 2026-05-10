@@ -269,6 +269,7 @@ function openCollection(folderName) {
   if (uploadPanel) uploadPanel.classList.add("hidden");
   viewCollections.classList.add("hidden");
   viewCollectionDetail.classList.remove("hidden");
+  history.pushState({ view: "collection", folder: folderName }, "", "#collection/" + encodeURIComponent(folderName));
   loadPhotos();
 }
 
@@ -276,8 +277,30 @@ function backToCollections() {
   currentFolder = "";
   viewCollectionDetail.classList.add("hidden");
   viewCollections.classList.remove("hidden");
+  history.pushState({ view: "collections" }, "", location.pathname);
   loadCollections();
 }
+
+window.addEventListener("popstate", (e) => {
+  const state = e.state;
+  if (!state || state.view === "collections") {
+    if (!viewCollectionDetail.classList.contains("hidden")) {
+      currentFolder = "";
+      viewCollectionDetail.classList.add("hidden");
+      viewCollections.classList.remove("hidden");
+      loadCollections();
+    }
+  } else if (state.view === "collection" && state.folder) {
+    currentFolder = state.folder;
+    if (detailFolderName) detailFolderName.textContent = state.folder;
+    if (shareResultRow) shareResultRow.classList.add("hidden");
+    if (shareStatus) shareStatus.textContent = "";
+    if (uploadPanel) uploadPanel.classList.add("hidden");
+    viewCollections.classList.add("hidden");
+    viewCollectionDetail.classList.remove("hidden");
+    loadPhotos();
+  }
+});
 
 function renderPhotos(photos) {
   currentPhotos = photos;
@@ -455,6 +478,7 @@ async function ensureAuthenticated() {
     }
 
     setUiAuthenticated(true);
+    history.replaceState({ view: "collections" }, "", location.pathname);
     await loadCollections();
   } catch {
     handleUnauthorized();
@@ -486,6 +510,7 @@ loginForm.addEventListener("submit", async (event) => {
     setUiAuthenticated(true);
     authStatus.textContent = "";
     passwordInput.value = "";
+    history.replaceState({ view: "collections" }, "", location.pathname);
     await loadCollections();
   } catch (error) {
     authStatus.textContent = error.message;
