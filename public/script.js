@@ -1,5 +1,11 @@
 const AUTH_TOKEN_KEY = "ownerAuthToken";
 
+// When the frontend is served from Cloudflare Pages (or any static host)
+// that is separate from the Worker, set this to the Worker URL, e.g.:
+//   "https://moments-worker.YOUR_SUBDOMAIN.workers.dev"
+// When served from the same origin (Express VPS), leave as empty string.
+const API_BASE = window.__MOMENTS_API_BASE__ || "";
+
 const authCard = document.getElementById("auth-card");
 const ownerDashboard = document.getElementById("owner-dashboard");
 const loginForm = document.getElementById("login-form");
@@ -131,6 +137,12 @@ function handleUnauthorized(message = "Session expired. Please sign in again.") 
   authStatus.textContent = message;
 }
 
+// Prepend API_BASE to any /api/ or /internal/ path
+function api(path) {
+  if (API_BASE && path.startsWith("/")) return `${API_BASE}${path}`;
+  return path;
+}
+
 function appendAuthQuery(url) {
   const safeToken = normalizeToken(authToken);
   if (!safeToken) return url;
@@ -139,7 +151,8 @@ function appendAuthQuery(url) {
   return `${url}${separator}auth=${encodeURIComponent(safeToken)}`;
 }
 
-async function authorizedFetch(url, options = {}) {
+async function authorizedFetch(path, options = {}) {
+  const url     = api(path);
   const headers = new Headers(options.headers || {});
   const safeToken = normalizeToken(authToken);
 
@@ -259,7 +272,7 @@ function renderCollections(photos) {
     coverDiv.className = "collection-cover";
     if (coverPhoto) {
       const img = document.createElement("img");
-      img.src = appendAuthQuery(`/api/photos/${coverPhoto.id}/thumb`);
+      img.src = appendAuthQuery(api(`/api/photos/${coverPhoto.id}/thumb`));
       img.alt = folderName;
       img.loading = "lazy";
       coverDiv.appendChild(img);
@@ -348,12 +361,12 @@ function renderPhotos(photos) {
     const isVideo = isVideoMimeType(photo.mimeType);
 
     if (isImage) {
-      image.src = appendAuthQuery(`/api/photos/${photo.id}/thumb`);
+      image.src = appendAuthQuery(api(`/api/photos/${photo.id}/thumb`));
     } else if (isVideo) {
       image.src = makeVideoPlaceholderDashboard();
       // Extract first frame for thumbnail
       const thumbVid = document.createElement("video");
-      thumbVid.src = appendAuthQuery(`/api/photos/${photo.id}/view`);
+      thumbVid.src = appendAuthQuery(api(`/api/photos/${photo.id}/view`));
       thumbVid.preload = "metadata";
       thumbVid.muted = true;
       thumbVid.playsInline = true;
@@ -378,7 +391,7 @@ function renderPhotos(photos) {
     name.textContent = photo.originalName;
     size.textContent = `${formatBytes(photo.size)} • ${new Date(photo.uploadedAt).toLocaleString()}`;
     folder.textContent = `${photo.folder || "General"}`;
-    download.href = appendAuthQuery(`/api/photos/${photo.id}/download`);
+    download.href = appendAuthQuery(api(`/api/photos/${photo.id}/download`));
     checkbox.value = photo.id;
     checkbox.addEventListener("change", () => {
       checkbox.closest(".photo-card").classList.toggle("is-selected", checkbox.checked);
@@ -455,7 +468,7 @@ async function loadPhotos() {
 function uploadWithProgress(formData) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/api/upload");
+    xhr.open("POST", api("/api/upload"));
 
     const safeToken = normalizeToken(authToken);
     if (safeToken) {
@@ -559,7 +572,7 @@ loginForm.addEventListener("submit", async (event) => {
   authStatus.textContent = "Signing in...";
 
   try {
-    const response = await fetch("/api/auth/login", {
+    const response = await fetch(api("/api/auth/login"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -809,7 +822,7 @@ function setDashLbPhoto(photo) {
   if (isVideoMimeType(photo.mimeType)) {
     dashLbImage.src = "";
     dashLbImage.classList.add("hidden");
-    dashLbVideo.src = appendAuthQuery(`/api/photos/${photo.id}/view`);
+    dashLbVideo.src = appendAuthQuery(api(`/api/photos/${photo.id}/view`));
     dashLbVideo.classList.remove("hidden");
     dashLbVideo.load();
     dashLbVideo.play().catch(() => {});
@@ -818,11 +831,11 @@ function setDashLbPhoto(photo) {
     dashLbVideo.src = "";
     dashLbVideo.classList.add("hidden");
     dashLbImage.classList.remove("hidden");
-    dashLbImage.src = appendAuthQuery(`/api/photos/${photo.id}/view`);
+    dashLbImage.src = appendAuthQuery(api(`/api/photos/${photo.id}/view`));
     dashLbImage.alt = photo.originalName;
   }
   if (dashLbDownload) {
-    dashLbDownload.href = appendAuthQuery(`/api/photos/${photo.id}/download`);
+    dashLbDownload.href = appendAuthQuery(api(`/api/photos/${photo.id}/download`));
   }
 }
 

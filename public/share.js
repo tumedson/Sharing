@@ -647,11 +647,19 @@ document.addEventListener("keydown", (e) => {
 
 // ─── Shared gallery ───────────────────────────────────────────────
 
+// When the frontend is on a different origin than the Worker, set:
+//   window.__MOMENTS_API_BASE__ = "https://moments-worker.xxx.workers.dev"
+const API_BASE = window.__MOMENTS_API_BASE__ || "";
+function api(path) {
+  if (API_BASE && path.startsWith("/")) return `${API_BASE}${path}`;
+  return path;
+}
+
 async function loadSharedGallery() {
   const token = window.location.pathname.split("/").filter(Boolean).pop();
 
   try {
-    const response = await fetch(`/api/share/${token}`);
+    const response = await fetch(api(`/api/share/${token}`));
     const result = await response.json();
 
     if (!response.ok) {

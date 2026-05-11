@@ -1,0 +1,25 @@
+name = "moments-worker"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# ── R2 Bucket ──────────────────────────────────────────────────────────────────
+[[r2_buckets]]
+binding  = "R2"           # env.R2  inside the worker
+bucket_name = "moments-edson"
+
+# ── KV Namespaces (metadata store) ────────────────────────────────────────────
+# Create with: wrangler kv namespace create METADATA
+[[kv_namespaces]]
+binding  = "KV"           # env.KV  inside the worker
+id       = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+# ── Environment variables (non-secret) ────────────────────────────────────────
+[vars]
+PUBLIC_BASE_URL     = "https://moments-worker.YOUR_SUBDOMAIN.workers.dev"
+AUTH_SESSION_TTL_HOURS = "24"
+
+# ── Secrets (set via: wrangler secret put SECRET_NAME) ────────────────────────
+# OWNER_USERNAME
+# OWNER_PASSWORD
+# (Sessions are stored in KV — no database needed)
