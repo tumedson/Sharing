@@ -732,8 +732,13 @@ app.get("/api/photos/:id/thumb", requireOwnerAuth, async (req, res, next) => {
       return;
     }
 
+    if (isVideoMimeType(photo.mimeType)) {
+      res.redirect("/video-fallback.jpg");
+      return;
+    }
+
     if (!isImageMimeType(photo.mimeType)) {
-      res.status(415).json({ error: "Thumbnail not available for this file type." });
+      res.redirect("/video-fallback.jpg");
       return;
     }
 
@@ -1024,7 +1029,7 @@ app.get("/api/share/:token/photos/:photoId/thumb", async (req, res, next) => {
     }
 
     if (!isImageMimeType(photo.mimeType)) {
-      throw createHttpError(415, "Thumbnail not available for this file type.");
+      res.redirect("/video-fallback.jpg"); return;
     }
 
     if (isS3Photo(photo)) {
