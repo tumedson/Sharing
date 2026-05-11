@@ -183,6 +183,7 @@ function renderSharedPhotos(photos) {
     return timeA - timeB;
   });
   sharedGrid.innerHTML = "";
+  galleryVideoObserver.disconnect();
 
   if (!sharedPhotos.length) {
     renderStateMessage("No photos in this share.");
@@ -208,33 +209,19 @@ function renderSharedPhotos(photos) {
       image.alt = photo.originalName;
       if (videoOverlay) videoOverlay.style.display = "none";
     } else if (isVideo) {
-      image.src = makeVideoPlaceholder(photo.originalName);
-      image.alt = photo.originalName;
-      image.style.cursor = "pointer";
+      // Replace static <img> with a muted looping <video> that autoplays in-view
+      const inlineVid = document.createElement("video");
+      inlineVid.className = "photo-preview gallery-inline-video";
+      inlineVid.src = photo.viewUrl;
+      inlineVid.preload = "none";
+      inlineVid.muted = true;
+      inlineVid.loop = true;
+      inlineVid.playsInline = true;
+      inlineVid.poster = "/video-fallback.jpg";
+      inlineVid.style.cssText = "width:100%;display:block;object-fit:cover;cursor:pointer;";
+      image.replaceWith(inlineVid);
       if (videoOverlay) videoOverlay.style.display = "flex";
-      // Preload first frame via hidden video element
-      const thumbVid = document.createElement("video");
-      thumbVid.src = photo.viewUrl;
-      thumbVid.preload = "metadata";
-      thumbVid.muted = true;
-      thumbVid.playsInline = true;
-      thumbVid.crossOrigin = "anonymous";
-      thumbVid.style.display = "none";
-      thumbVid.addEventListener("loadedmetadata", () => {
-        thumbVid.currentTime = Math.min(1, (thumbVid.duration || 2) * 0.1);
-      }, { once: true });
-      thumbVid.addEventListener("seeked", () => {
-        try {
-          const canvas = document.createElement("canvas");
-          canvas.width = thumbVid.videoWidth || 640;
-          canvas.height = thumbVid.videoHeight || 360;
-          canvas.getContext("2d").drawImage(thumbVid, 0, 0, canvas.width, canvas.height);
-          image.src = canvas.toDataURL("image/jpeg", 0.85);
-        } catch (_) { /* CORS or decode error — keep placeholder */ }
-        thumbVid.remove();
-        scheduleMasonryLayout();
-      }, { once: true });
-      document.body.appendChild(thumbVid);
+      galleryVideoObserver.observe(article);
     } else {
       image.src = makeFilePlaceholder(photo.originalName);
       image.alt = photo.originalName;
@@ -522,6 +509,24 @@ function handleLightboxTouchEnd() {
 
 let reelVideos = [];
 let reelObserver = null;
+
+// IntersectionObserver: autoplay gallery video cards when centre of screen,
+// pause + unload when scrolled away — like Instagram/TikTok inline previews.
+const galleryVideoObserver = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    const vid = entry.target.querySelector(".gallery-inline-video");
+    if (!vid) return;
+    if (entry.intersectionRatio >= 0.5) {
+      // Load src on demand (was preload="none")
+      if (!vid.src && vid.dataset.src) vid.src = vid.dataset.src;
+      vid.play().catch(() => {});
+    } else {
+      vid.pause();
+    }
+  });
+}, {
+  threshold: 0.5
+});
 let reelMuted = false;
 let reelHistoryEntry = false;
 
