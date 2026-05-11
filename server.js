@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const fs = require("fs");
 const fsp = require("fs/promises");
@@ -19,7 +20,7 @@ const PUBLIC_BASE_URL = String(process.env.PUBLIC_BASE_URL || "").trim().replace
 
 const S3_BUCKET = process.env.S3_BUCKET;
 const S3_REGION = process.env.AWS_REGION;
-const S3_ENDPOINT = process.env.S3_ENDPOINT;
+const S3_ENDPOINT = process.env.S3_ENDPOINT || process.env.AWS_ENDPOINT_URL;
 const S3_FORCE_PATH_STYLE = process.env.S3_FORCE_PATH_STYLE === "true";
 
 const UPLOAD_DIR = path.join(__dirname, "uploads");
