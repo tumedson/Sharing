@@ -716,6 +716,35 @@ app.get("/api/photos/:id/view", requireOwnerAuth, async (req, res, next) => {
       return;
     }
 
+    if (isVideoMimeType(photo.mimeType)) {
+      const stat = await fsp.stat(filePath);
+      const fileSize = stat.size;
+      const rangeHeader = req.headers.range;
+
+      if (rangeHeader) {
+        const parts = rangeHeader.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        const chunkSize = end - start + 1;
+        const fileStream = fs.createReadStream(filePath, { start, end });
+        res.writeHead(206, {
+          "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+          "Accept-Ranges": "bytes",
+          "Content-Length": chunkSize,
+          "Content-Type": photo.mimeType
+        });
+        fileStream.pipe(res);
+      } else {
+        res.writeHead(200, {
+          "Content-Length": fileSize,
+          "Content-Type": photo.mimeType,
+          "Accept-Ranges": "bytes"
+        });
+        fs.createReadStream(filePath).pipe(res);
+      }
+      return;
+    }
+
     res.sendFile(filePath);
   } catch (error) {
     next(error);
