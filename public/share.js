@@ -209,19 +209,11 @@ function renderSharedPhotos(photos) {
       image.alt = photo.originalName;
       if (videoOverlay) videoOverlay.style.display = "none";
     } else if (isVideo) {
-      // Replace static <img> with a muted looping <video> that autoplays in-view
-      const inlineVid = document.createElement("video");
-      inlineVid.className = "photo-preview gallery-inline-video";
-      inlineVid.src = photo.viewUrl;
-      inlineVid.preload = "none";
-      inlineVid.muted = true;
-      inlineVid.loop = true;
-      inlineVid.playsInline = true;
-      inlineVid.poster = "/video-fallback.jpg";
-      inlineVid.style.cssText = "width:100%;display:block;object-fit:cover;cursor:pointer;";
-      image.replaceWith(inlineVid);
+      // Show a static thumbnail — video only loads when the reel is opened
+      image.src = photo.thumbUrl;
+      image.alt = photo.originalName;
+      image.onerror = () => { image.src = "/video-fallback.jpg"; };
       if (videoOverlay) videoOverlay.style.display = "flex";
-      galleryVideoObserver.observe(article);
     } else {
       image.src = makeFilePlaceholder(photo.originalName);
       image.alt = photo.originalName;

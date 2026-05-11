@@ -4,6 +4,7 @@ const fs = require("fs");
 const fsp = require("fs/promises");
 const path = require("path");
 const crypto = require("crypto");
+const { execFile } = require("child_process");
 const multer = require("multer");
 const sharp = require("sharp");
 const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
@@ -331,6 +332,39 @@ async function ensureLocalThumb(photo) {
       })
       .jpeg({ quality: THUMB_QUALITY, mozjpeg: true })
       .toFile(thumbPath);
+  }
+
+  return thumbPath;
+}
+
+async function ensureVideoThumb(photo) {
+  if (!photo || !photo.id || !isVideoMimeType(photo.mimeType) || isS3Photo(photo)) {
+    return null;
+  }
+
+  const sourcePath = path.join(UPLOAD_DIR, getLocalStoredName(photo));
+  const thumbPath = getThumbPath(photo.id);
+
+  const [sourceStat, thumbStat] = await Promise.all([
+    fsp.stat(sourcePath).catch(() => null),
+    fsp.stat(thumbPath).catch(() => null)
+  ]);
+
+  if (!sourceStat) return null;
+
+  const thumbOutdated = !thumbStat || thumbStat.mtimeMs < sourceStat.mtimeMs;
+  if (thumbOutdated) {
+    await fsp.mkdir(THUMB_DIR, { recursive: true });
+    await new Promise((resolve, reject) => {
+      execFile("ffmpeg", [
+        "-y", "-i", sourcePath,
+        "-ss", "00:00:01",
+        "-vframes", "1",
+        "-vf", "scale=640:-2",
+        "-q:v", "4",
+        thumbPath
+      ], (err) => (err ? reject(err) : resolve()));
+    });
   }
 
   return thumbPath;
@@ -763,6 +797,12 @@ app.get("/api/photos/:id/thumb", requireOwnerAuth, async (req, res, next) => {
     }
 
     if (isVideoMimeType(photo.mimeType)) {
+      const thumbPath = await ensureVideoThumb(photo);
+      if (thumbPath) {
+        res.set("Cache-Control", "public, max-age=86400");
+        res.sendFile(thumbPath);
+        return;
+      }
       res.redirect("/video-fallback.jpg");
       return;
     }
@@ -1056,6 +1096,17 @@ app.get("/api/share/:token/photos/:photoId/thumb", async (req, res, next) => {
 
     if (!photo) {
       throw createHttpError(404, "Photo not found.");
+    }
+
+    if (isVideoMimeType(photo.mimeType)) {
+      const thumbPath = await ensureVideoThumb(photo);
+      if (thumbPath) {
+        res.set("Cache-Control", "public, max-age=86400");
+        res.sendFile(thumbPath);
+        return;
+      }
+      res.redirect("/video-fallback.jpg");
+      return;
     }
 
     if (!isImageMimeType(photo.mimeType)) {
