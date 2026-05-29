@@ -19,10 +19,12 @@ const OWNER_PASSWORD = process.env.OWNER_PASSWORD || "password";
 const AUTH_SESSION_TTL_HOURS = Number(process.env.AUTH_SESSION_TTL_HOURS || 24);
 const PUBLIC_BASE_URL = String(process.env.PUBLIC_BASE_URL || "").trim().replace(/\/+$/g, "");
 
-const S3_BUCKET = process.env.S3_BUCKET;
-const S3_REGION = process.env.AWS_REGION;
-const S3_ENDPOINT = process.env.S3_ENDPOINT || process.env.AWS_ENDPOINT_URL;
-const S3_FORCE_PATH_STYLE = process.env.S3_FORCE_PATH_STYLE === "true";
+const S3_BUCKET = process.env.R2_BUCKET || process.env.S3_BUCKET;
+// Cloudflare R2: derive endpoint from Account ID, or accept a full URL override
+const R2_ACCOUNT_ID = (process.env.R2_ACCOUNT_ID || "").trim();
+const S3_ENDPOINT = R2_ACCOUNT_ID
+  ? `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
+  : (process.env.R2_ENDPOINT || process.env.S3_ENDPOINT || process.env.AWS_ENDPOINT_URL || "").trim();
 
 const UPLOAD_DIR = path.join(__dirname, "uploads");
 const TEMP_UPLOAD_DIR = path.join(UPLOAD_DIR, "tmp");
@@ -42,28 +44,34 @@ const THUMB_QUALITY = 68;
 let s3Client = null;
 
 if (USE_S3) {
-  if (!S3_BUCKET || !S3_REGION) {
-    console.error("Missing S3_BUCKET or AWS_REGION for S3 mode.");
+  if (!S3_BUCKET) {
+    console.error("[R2] Missing R2_BUCKET environment variable.");
+    process.exit(1);
+  }
+  if (!S3_ENDPOINT) {
+    console.error("[R2] Missing R2_ACCOUNT_ID (or R2_ENDPOINT) environment variable.");
     process.exit(1);
   }
 
-  const clientConfig = {
-    region: S3_REGION,
-    forcePathStyle: S3_FORCE_PATH_STYLE
-  };
+  const r2AccessKeyId = (process.env.R2_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID || "").trim();
+  const r2SecretAccessKey = (process.env.R2_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY || "").trim();
 
-  if (S3_ENDPOINT) {
-    clientConfig.endpoint = S3_ENDPOINT;
+  if (!r2AccessKeyId || !r2SecretAccessKey) {
+    console.error("[R2] Missing R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY environment variables.");
+    process.exit(1);
   }
 
-  if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
-    clientConfig.credentials = {
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
-    };
-  }
+  s3Client = new S3Client({
+    region: "auto",          // Cloudflare R2 ignores region; "auto" is the canonical value
+    endpoint: S3_ENDPOINT,
+    forcePathStyle: false,   // R2 uses virtual-hosted-style URLs
+    credentials: {
+      accessKeyId: r2AccessKeyId,
+      secretAccessKey: r2SecretAccessKey
+    }
+  });
 
-  s3Client = new S3Client(clientConfig);
+  console.log(`[R2] Storage client initialised → ${S3_ENDPOINT} / bucket: ${S3_BUCKET}`);
 }
 
 function sanitizeFileName(fileName) {

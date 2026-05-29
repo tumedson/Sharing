@@ -1,0 +1,59 @@
+# Firebase App Hosting configuration (Cloud Run backend)
+# Docs: https://firebase.google.com/docs/app-hosting/configure
+
+runConfig:
+  concurrency: 80       # max simultaneous requests per instance
+  cpu: 1
+  memoryMiB: 512
+  minInstances: 0       # scale to zero when idle (cost saving)
+  maxInstances: 4
+
+env:
+  # ── Non-sensitive runtime config ──────────────────────────────────────────
+  - variable: NODE_ENV
+    value: production
+    availability:
+      - RUNTIME
+
+  - variable: STORAGE_PROVIDER
+    value: s3             # keeps "s3" as the provider flag; R2 is S3-compatible
+    availability:
+      - RUNTIME
+
+  - variable: AUTH_SESSION_TTL_HOURS
+    value: "24"
+    availability:
+      - RUNTIME
+
+  # ── Cloudflare R2 (non-secret) ────────────────────────────────────────────
+  - variable: R2_BUCKET
+    value: moments-edson
+    availability:
+      - RUNTIME
+
+  - variable: R2_ACCOUNT_ID
+    value: 3075d026bff0ba12553c09d82a3bc1d4
+    availability:
+      - RUNTIME
+
+  # ── Public URL ────────────────────────────────────────────────────────────
+  - variable: PUBLIC_BASE_URL
+    value: https://ceva.edsoneli.com
+    availability:
+      - RUNTIME
+
+  # ── Secrets (stored in Google Cloud Secret Manager) ───────────────────────
+  # Create these with the gcloud commands shown in the deployment guide.
+  # Firebase App Hosting injects the latest version at container startup.
+
+  - variable: OWNER_USERNAME
+    secret: sharing-owner-username
+
+  - variable: OWNER_PASSWORD
+    secret: sharing-owner-password
+
+  - variable: R2_ACCESS_KEY_ID
+    secret: sharing-r2-access-key-id
+
+  - variable: R2_SECRET_ACCESS_KEY
+    secret: sharing-r2-secret-access-key
