@@ -47,13 +47,13 @@ env:
   # Firebase App Hosting injects the latest version at container startup.
 
   - variable: OWNER_USERNAME
-    secret: sharing-owner-username
+    secret: OWNER_USERNAME
 
   - variable: OWNER_PASSWORD
-    secret: sharing-owner-password
+    secret: OWNER_PASSWORD
 
   - variable: R2_ACCESS_KEY_ID
-    secret: sharing-r2-access-key-id
+    secret: R2_ACCESS_KEY_ID
 
   - variable: R2_SECRET_ACCESS_KEY
-    secret: sharing-r2-secret-access-key
+    secret: R2_SECRET_ACCESS_KEY
