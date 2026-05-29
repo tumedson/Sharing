@@ -17,7 +17,7 @@ const USE_S3 = STORAGE_PROVIDER === "s3";
 const OWNER_USERNAME = process.env.OWNER_USERNAME || "eli";
 const OWNER_PASSWORD = process.env.OWNER_PASSWORD || "password";
 const AUTH_SESSION_TTL_HOURS = Number(process.env.AUTH_SESSION_TTL_HOURS || 24);
-const PUBLIC_BASE_URL = String(process.env.PUBLIC_BASE_URL || "").trim().replace(/\/+$/g, "");
+const PUBLIC_BASE_URL = String(process.env.PUBLIC_BASE_URL || "https://sharing--fluttershare-994d6.us-east4.hosted.app").trim().replace(/\/+$/g, "");
 
 const S3_BUCKET = process.env.R2_BUCKET || process.env.S3_BUCKET;
 // Cloudflare R2: derive endpoint from Account ID, or accept a full URL override
