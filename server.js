@@ -74,6 +74,60 @@ if (USE_S3) {
   console.log(`[R2] Storage client initialised → ${S3_ENDPOINT} / bucket: ${S3_BUCKET}`);
 }
 
+// ---------------------------------------------------------------------------
+// R2-backed JSON persistence (used when USE_S3 = true)
+// Keys live under the _data/ prefix so they are never confused with photos.
+// ---------------------------------------------------------------------------
+const R2_DATA_PREFIX = "_data/";
+
+async function readR2Json(key, defaultValue) {
+  try {
+    const cmd = new GetObjectCommand({ Bucket: S3_BUCKET, Key: R2_DATA_PREFIX + key });
+    const res = await s3Client.send(cmd);
+    const text = await res.Body.transformToString("utf-8");
+    const parsed = JSON.parse(text);
+    return parsed;
+  } catch (err) {
+    // NoSuchKey means data hasn't been seeded to R2 yet — return default
+    if (err.name === "NoSuchKey" || err.$metadata?.httpStatusCode === 404) {
+      return defaultValue;
+    }
+    throw err;
+  }
+}
+
+async function writeR2Json(key, data) {
+  const cmd = new PutObjectCommand({
+    Bucket: S3_BUCKET,
+    Key: R2_DATA_PREFIX + key,
+    Body: JSON.stringify(data, null, 2),
+    ContentType: "application/json"
+  });
+  await s3Client.send(cmd);
+}
+
+// On first boot, if R2 has no data file yet, seed it from the committed JSON
+// that was baked into the container image so existing photos/folders survive.
+async function seedR2FromLocal(key, localFile, defaultValue) {
+  try {
+    await s3Client.send(new GetObjectCommand({ Bucket: S3_BUCKET, Key: R2_DATA_PREFIX + key }));
+    // File already exists in R2 — nothing to do
+  } catch (err) {
+    if (err.name === "NoSuchKey" || err.$metadata?.httpStatusCode === 404) {
+      let seedData = defaultValue;
+      try {
+        const text = await fsp.readFile(localFile, "utf8");
+        const parsed = JSON.parse(text);
+        seedData = parsed;
+        console.log(`[R2 seed] Migrating ${key} from local file to R2`);
+      } catch {
+        console.log(`[R2 seed] No local file for ${key}, seeding with default`);
+      }
+      await writeR2Json(key, seedData);
+    }
+  }
+}
+
 function sanitizeFileName(fileName) {
   return fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
@@ -297,6 +351,17 @@ async function ensureStorageFiles() {
   if (!fs.existsSync(FOLDERS_FILE)) {
     await fsp.writeFile(FOLDERS_FILE, JSON.stringify([DEFAULT_FOLDER], null, 2), "utf8");
   }
+
+  // When running on Cloud Run (USE_S3=true), migrate committed JSON files to R2
+  // on first boot so existing photos/folders/share-links are preserved.
+  if (USE_S3 && s3Client) {
+    await Promise.all([
+      seedR2FromLocal("metadata.json",    METADATA_FILE,    []),
+      seedR2FromLocal("share-links.json", SHARE_LINKS_FILE, []),
+      seedR2FromLocal("folders.json",     FOLDERS_FILE,     [DEFAULT_FOLDER]),
+      seedR2FromLocal("folder-meta.json", FOLDER_META_FILE, {})
+    ]);
+  }
 }
 
 function isImageMimeType(mimeType) {
@@ -379,22 +444,42 @@ async function ensureVideoThumb(photo) {
 }
 
 async function readMetadata() {
+  if (USE_S3) {
+    const data = await readR2Json("metadata.json", []);
+    return Array.isArray(data) ? data : [];
+  }
   return readJsonArray(METADATA_FILE);
 }
 
 async function writeMetadata(entries) {
+  if (USE_S3) {
+    await writeR2Json("metadata.json", entries);
+    return;
+  }
   await fsp.writeFile(METADATA_FILE, JSON.stringify(entries, null, 2), "utf8");
 }
 
 async function readShareLinks() {
+  if (USE_S3) {
+    const data = await readR2Json("share-links.json", []);
+    return Array.isArray(data) ? data : [];
+  }
   return readJsonArray(SHARE_LINKS_FILE);
 }
 
 async function writeShareLinks(links) {
+  if (USE_S3) {
+    await writeR2Json("share-links.json", links);
+    return;
+  }
   await fsp.writeFile(SHARE_LINKS_FILE, JSON.stringify(links, null, 2), "utf8");
 }
 
 async function readFolderMeta() {
+  if (USE_S3) {
+    const data = await readR2Json("folder-meta.json", {});
+    return (data && typeof data === "object" && !Array.isArray(data)) ? data : {};
+  }
   try {
     const text = await fsp.readFile(FOLDER_META_FILE, "utf8");
     const data = JSON.parse(text);
@@ -405,19 +490,32 @@ async function readFolderMeta() {
 }
 
 async function writeFolderMeta(meta) {
+  if (USE_S3) {
+    await writeR2Json("folder-meta.json", meta);
+    return;
+  }
   await fsp.writeFile(FOLDER_META_FILE, JSON.stringify(meta, null, 2), "utf8");
 }
 
 async function readFolders() {
-  const folders = await readJsonArray(FOLDERS_FILE);
-  const normalized = folders.map(normalizeFolderName).filter(Boolean);
-  const deduped = [...new Set([DEFAULT_FOLDER, ...normalized])];
-  return deduped;
+  let raw;
+  if (USE_S3) {
+    const data = await readR2Json("folders.json", [DEFAULT_FOLDER]);
+    raw = Array.isArray(data) ? data : [DEFAULT_FOLDER];
+  } else {
+    raw = await readJsonArray(FOLDERS_FILE);
+  }
+  const normalized = raw.map(normalizeFolderName).filter(Boolean);
+  return [...new Set([DEFAULT_FOLDER, ...normalized])];
 }
 
 async function writeFolders(folders) {
   const normalized = folders.map(normalizeFolderName).filter(Boolean);
   const deduped = [...new Set([DEFAULT_FOLDER, ...normalized])];
+  if (USE_S3) {
+    await writeR2Json("folders.json", deduped);
+    return;
+  }
   await fsp.writeFile(FOLDERS_FILE, JSON.stringify(deduped, null, 2), "utf8");
 }
 
