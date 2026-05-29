@@ -38,7 +38,7 @@ env:
 
   # ── Public URL ────────────────────────────────────────────────────────────
   - variable: PUBLIC_BASE_URL
-    value: https://ceva.edsoneli.com
+    value: https://sharing--fluttershare-994d6.us-east4.hosted.app
     availability:
       - RUNTIME
 
