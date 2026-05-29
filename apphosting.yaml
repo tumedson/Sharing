@@ -36,12 +36,6 @@ env:
     availability:
       - RUNTIME
 
-  # ── Public URL ────────────────────────────────────────────────────────────
-  - variable: PUBLIC_BASE_URL
-    value: https://sharing--fluttershare-994d6.us-east4.hosted.app
-    availability:
-      - RUNTIME
-
   # ── Secrets (stored in Google Cloud Secret Manager) ───────────────────────
   # Create these with the gcloud commands shown in the deployment guide.
   # Firebase App Hosting injects the latest version at container startup.

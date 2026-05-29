@@ -610,6 +610,7 @@ const upload = multer({
   }
 });
 
+app.set("trust proxy", 1); // Cloud Run sits behind Google's reverse proxy
 app.use(express.json());
 app.use((req, res, next) => {
   const noCachePaths = ["/", "/script.js", "/share.js", "/styles.css"];
