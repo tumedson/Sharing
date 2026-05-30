@@ -116,13 +116,15 @@ function applyMasonryLayout() {
   sharedGrid.querySelectorAll(".share-photo-card").forEach((card) => {
     const image = card.querySelector(".photo-preview");
     if (!image || !image.naturalWidth || !image.naturalHeight) {
-      card.style.gridRowEnd = "span 1";
+      // Image not yet loaded — hold a ~240 px placeholder so cards don't
+      // collapse to a 4 px row. scheduleMasonryLayout fires again on load.
+      card.style.gridRowEnd = `span ${Math.max(1, Math.ceil(240 / (autoRow + rowGap)))}`;
       return;
     }
 
     const cardWidth = card.clientWidth || image.clientWidth;
     if (!cardWidth) {
-      card.style.gridRowEnd = "span 1";
+      card.style.gridRowEnd = `span ${Math.max(1, Math.ceil(240 / (autoRow + rowGap)))}`;
       return;
     }
 
