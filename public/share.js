@@ -841,32 +841,5 @@ document.addEventListener("click", (e) => {
   updateFloatBar();
 }, true);
 
-// Patch renderSharedPhotos to use lazy loading and hook into the bar
-const _origRenderSharedPhotos = renderSharedPhotos;
-window.__shareRenderSharedPhotos = _origRenderSharedPhotos;
-
-// Override renderSharedPhotos to wire up lazy loading after render
-(function patchLazyLoad() {
-  const origRender = window.renderSharedPhotos || renderSharedPhotos;
-
-  function hookLazyImages() {
-    // Find all images that got a real src but should be lazy
-    sharedGrid.querySelectorAll(".photo-preview.lazy").forEach((img) => {
-      if (img.dataset.lazySrc) {
-        // Already patched by caller
-        lazyImageObserver.observe(img);
-      } else if (img.src && !img.src.startsWith("data:")) {
-        // Move the src to data-lazy-src for observer-driven load
-        img.dataset.lazySrc = img.src;
-        img.src = "";
-        lazyImageObserver.observe(img);
-      }
-    });
-  }
-
-  // Run once after the initial render populates the DOM
-  const mo = new MutationObserver(() => {
-    hookLazyImages();
-  });
-  mo.observe(sharedGrid, { childList: true });
-}());
+// Native lazy loading via loading="lazy" on the template img handles
+// deferred image loading reliably across all mobile browsers.
