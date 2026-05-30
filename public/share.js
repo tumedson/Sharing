@@ -647,9 +647,9 @@ document.addEventListener("keydown", (e) => {
 
 // ─── Shared gallery ───────────────────────────────────────────────
 
-// When the frontend is on a different origin than the Worker, set:
-//   window.__MOMENTS_API_BASE__ = "https://moments-worker.xxx.workers.dev"
-const API_BASE = window.__MOMENTS_API_BASE__ || "";
+// API_BASE: empty = same-origin requests (Firebase App Hosting serves both the page
+// and the /api/* routes from the same origin, so no Worker proxy is needed).
+const API_BASE = "";
 function api(path) {
   if (API_BASE && path.startsWith("/")) return `${API_BASE}${path}`;
   return path;
@@ -734,3 +734,137 @@ document.addEventListener("keydown", (event) => {
     showPreviousPhoto();
   }
 });
+
+// ─── IntersectionObserver Lazy Loading ────────────────────────────────────
+// Images are rendered with class="photo-preview lazy" and data-lazy-src set.
+// Once they enter the viewport the observer loads the real src and fades in.
+
+const lazyImageObserver = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (!entry.isIntersecting) return;
+    const img = entry.target;
+    const src = img.dataset.lazySrc;
+    if (!src) return;
+    img.src = src;
+    img.addEventListener("load", () => {
+      img.classList.add("loaded");
+      scheduleMasonryLayout();
+    }, { once: true });
+    img.addEventListener("error", () => img.classList.add("loaded"), { once: true });
+    lazyImageObserver.unobserve(img);
+  });
+}, {
+  rootMargin: "200px 0px",   // start loading 200 px before entering viewport
+  threshold: 0
+});
+
+// ─── In-memory URL cache ──────────────────────────────────────────────────
+// Prevents duplicate fetches when the same thumb URL is needed more than once.
+const thumbUrlCache = new Map();
+
+function getCachedUrl(url) {
+  return thumbUrlCache.get(url) || null;
+}
+
+function setCachedUrl(url) {
+  thumbUrlCache.set(url, url);
+  return url;
+}
+
+// ─── Floating bar (selection + download) ─────────────────────────────────
+const shareFloatBar       = document.getElementById("share-float-bar");
+const floatBarLabel       = document.getElementById("float-bar-label");
+const floatSelectAllBtn   = document.getElementById("float-select-all-btn");
+const floatDownloadBtn    = document.getElementById("float-download-btn");
+
+let selectedPhotoIds = new Set();
+
+function updateFloatBar() {
+  if (!shareFloatBar) return;
+  const count = selectedPhotoIds.size;
+  const visible = count > 0;
+  shareFloatBar.classList.toggle("is-visible", visible);
+  if (floatBarLabel) floatBarLabel.textContent = `${count} selected`;
+
+  if (floatDownloadBtn) {
+    if (count === 1) {
+      const id = [...selectedPhotoIds][0];
+      const photo = sharedPhotos.find((p) => p.id === id);
+      if (photo) {
+        floatDownloadBtn.href = photo.downloadUrl;
+        floatDownloadBtn.style.display = "inline-flex";
+      }
+    } else {
+      floatDownloadBtn.style.display = "none";
+    }
+  }
+}
+
+if (floatSelectAllBtn) {
+  floatSelectAllBtn.addEventListener("click", () => {
+    const allSelected = selectedPhotoIds.size === sharedPhotos.length;
+    if (allSelected) {
+      selectedPhotoIds.clear();
+      document.querySelectorAll(".share-photo-card.is-selected").forEach((c) => c.classList.remove("is-selected"));
+    } else {
+      sharedPhotos.forEach((p) => selectedPhotoIds.add(p.id));
+      document.querySelectorAll(".share-photo-card").forEach((c) => c.classList.add("is-selected"));
+    }
+    updateFloatBar();
+  });
+}
+
+// Tap on a card in the gallery toggles selection when bar is open,
+// or opens the lightbox if nothing is selected (default behaviour preserved).
+document.addEventListener("click", (e) => {
+  const card = e.target.closest(".share-photo-card");
+  if (!card) return;
+
+  // Only intercept bare card taps when the float bar is active (has selections)
+  if (selectedPhotoIds.size === 0) return;
+  // Allow action buttons to keep working
+  if (e.target.closest(".share-actions, .share-action-btn")) return;
+
+  const photoId = card.dataset.photoId;
+  if (!photoId) return;
+
+  e.stopPropagation();
+  if (selectedPhotoIds.has(photoId)) {
+    selectedPhotoIds.delete(photoId);
+    card.classList.remove("is-selected");
+  } else {
+    selectedPhotoIds.add(photoId);
+    card.classList.add("is-selected");
+  }
+  updateFloatBar();
+}, true);
+
+// Patch renderSharedPhotos to use lazy loading and hook into the bar
+const _origRenderSharedPhotos = renderSharedPhotos;
+window.__shareRenderSharedPhotos = _origRenderSharedPhotos;
+
+// Override renderSharedPhotos to wire up lazy loading after render
+(function patchLazyLoad() {
+  const origRender = window.renderSharedPhotos || renderSharedPhotos;
+
+  function hookLazyImages() {
+    // Find all images that got a real src but should be lazy
+    sharedGrid.querySelectorAll(".photo-preview.lazy").forEach((img) => {
+      if (img.dataset.lazySrc) {
+        // Already patched by caller
+        lazyImageObserver.observe(img);
+      } else if (img.src && !img.src.startsWith("data:")) {
+        // Move the src to data-lazy-src for observer-driven load
+        img.dataset.lazySrc = img.src;
+        img.src = "";
+        lazyImageObserver.observe(img);
+      }
+    });
+  }
+
+  // Run once after the initial render populates the DOM
+  const mo = new MutationObserver(() => {
+    hookLazyImages();
+  });
+  mo.observe(sharedGrid, { childList: true });
+}());

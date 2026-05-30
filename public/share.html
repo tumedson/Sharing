@@ -11,6 +11,8 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/styles.css" />
+    <!-- Preconnect for signed R2 asset domains -->
+    <link rel="preconnect" href="https://pub-0.r2.dev" crossorigin />
   </head>
   <body class="share-page">
     <div class="bg-grid" aria-hidden="true"></div>
@@ -20,7 +22,7 @@
 
     <section class="share-cover reveal">
       <div class="share-cover-media">
-        <img id="share-cover-image" class="share-cover-image" alt="Gallery cover" onerror="this.style.display='none'" />
+        <img id="share-cover-image" class="share-cover-image" alt="Gallery cover" loading="eager" fetchpriority="high" onerror="this.style.display='none'" />
         <div class="share-cover-overlay"></div>
       </div>
       <div class="share-cover-content">
@@ -45,10 +47,23 @@
       </section>
     </main>
 
+    <!-- Floating download / select bar -->
+    <div id="share-float-bar" class="share-float-bar" role="region" aria-label="Download actions">
+      <span class="share-float-count" id="float-bar-label">0 selected</span>
+      <button id="float-select-all-btn" class="ghost-btn btn-primary" type="button"
+        style="min-height:34px;padding:0 16px;font-size:0.8rem;border-radius:999px;background:rgba(255,255,255,0.08);border:1px solid var(--line-strong);color:var(--text);box-shadow:none"
+      >Select All</button>
+      <a id="float-download-btn" class="btn-primary" href="#" download aria-label="Download selected"
+        style="min-height:34px;padding:0 18px;font-size:0.8rem;border-radius:999px;display:none">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download
+      </a>
+    </div>
+
     <template id="shared-photo-template">
       <article class="photo-card share-photo-card">
         <div class="card-media-wrap">
-          <img class="photo-preview" alt="Shared photo preview" loading="lazy" />
+          <img class="photo-preview lazy" alt="Shared photo preview" />
           <div class="video-play-overlay" aria-hidden="true">
             <svg class="video-play-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
               <circle cx="24" cy="24" r="24" fill="rgba(0,0,0,0.52)"/>

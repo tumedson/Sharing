@@ -614,13 +614,24 @@ app.set("trust proxy", 1); // Cloud Run sits behind Google's reverse proxy
 app.use(express.json());
 app.use((req, res, next) => {
   const noCachePaths = ["/", "/script.js", "/share.js", "/styles.css"];
-  if (noCachePaths.includes(req.path) || req.path.startsWith("/share/")) {
+  const isApiRoute = req.path.startsWith("/api/");
+  const isSharePage = req.path.startsWith("/share/") || req.path.startsWith("/s/");
+
+  if (noCachePaths.includes(req.path) || isSharePage || isApiRoute) {
     res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
     res.set("Pragma", "no-cache");
     res.set("Expires", "0");
   }
   next();
 });
+
+// CDN cache helper — call inside route handlers before sending asset responses
+function setCdnCacheHeaders(res, { maxAge = 3600, sMaxAge = 86400, immutable = false } = {}) {
+  const directives = [`public`, `max-age=${maxAge}`, `s-maxage=${sMaxAge}`];
+  if (immutable) directives.push("immutable");
+  res.set("Cache-Control", directives.join(", "));
+  res.set("Vary", "Accept");
+}
 app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/health", (_req, res) => {
@@ -685,10 +696,14 @@ app.get("/api/folders", requireOwnerAuth, async (_req, res, next) => {
   try {
     const [folders, meta] = await Promise.all([getFolderCatalog(), readFolderMeta()]);
     const coverPhotoIds = {};
+    const collectionParents = {};
     for (const f of folders) {
       if (meta[f]?.coverPhotoId) coverPhotoIds[f] = meta[f].coverPhotoId;
+      if (meta[f]?.parentGroup) collectionParents[f] = meta[f].parentGroup;
     }
-    res.json({ folders, coverPhotoIds });
+    const groups = Array.isArray(meta.__groups__) ? meta.__groups__ : [];
+    const groupMeta = (typeof meta.__groupMeta__ === "object" && meta.__groupMeta__ !== null) ? meta.__groupMeta__ : {};
+    res.json({ folders, coverPhotoIds, groups, collectionParents, groupMeta });
   } catch (error) {
     next(error);
   }
@@ -735,6 +750,98 @@ app.post("/api/folders", requireOwnerAuth, async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+});
+
+// === Folder Groups ===
+
+app.post("/api/folder-groups", requireOwnerAuth, async (req, res, next) => {
+  try {
+    const name = normalizeFolderName(req.body?.name || "");
+    if (!name) { res.status(400).json({ error: "Folder name is required." }); return; }
+    const dateInput = typeof req.body?.date === "string" ? req.body.date.trim() : "";
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(dateInput) ? dateInput : new Date().toISOString().slice(0, 10);
+    const meta = await readFolderMeta();
+    const groups = Array.isArray(meta.__groups__) ? meta.__groups__ : [];
+    if (!groups.includes(name)) {
+      groups.push(name);
+      meta.__groups__ = groups;
+    }
+    if (!meta.__groupMeta__ || typeof meta.__groupMeta__ !== "object") meta.__groupMeta__ = {};
+    meta.__groupMeta__[name] = { date };
+    await writeFolderMeta(meta);
+    res.status(201).json({ message: "Folder created.", group: name, groups, date });
+  } catch (error) { next(error); }
+});
+
+app.delete("/api/folder-groups/:name", requireOwnerAuth, async (req, res, next) => {
+  try {
+    const name = normalizeFolderName(req.params.name);
+    if (!name) { res.status(400).json({ error: "Folder name required." }); return; }
+    const deleteContents = req.body?.deleteCollections === true;
+    const meta = await readFolderMeta();
+    const collectionNames = Object.entries(meta)
+      .filter(([k, v]) => k !== "__groups__" && k !== "__groupMeta__" && v?.parentGroup === name)
+      .map(([k]) => k);
+    if (deleteContents) {
+      const entries = await readMetadata();
+      const toDelete = entries.filter(e => collectionNames.includes(getPhotoFolder(e)));
+      for (const photo of toDelete) {
+        if (isS3Photo(photo)) {
+          await s3Client.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: getS3ObjectKey(photo) }));
+        } else {
+          await fsp.unlink(path.join(UPLOAD_DIR, getLocalStoredName(photo))).catch(() => {});
+        }
+      }
+      await writeMetadata(entries.filter(e => !collectionNames.includes(getPhotoFolder(e))));
+      const folders = await readFolders();
+      await writeFolders(folders.filter(f => !collectionNames.includes(f)));
+      collectionNames.forEach(c => delete meta[c]);
+    } else {
+      collectionNames.forEach(c => { if (meta[c]) delete meta[c].parentGroup; });
+    }
+    meta.__groups__ = (meta.__groups__ || []).filter(g => g !== name);
+    if (meta.__groupMeta__ && typeof meta.__groupMeta__ === "object") {
+      delete meta.__groupMeta__[name];
+    }
+    await writeFolderMeta(meta);
+    res.json({ message: deleteContents ? "Folder and collections deleted." : "Folder deleted.", collections: deleteContents ? collectionNames.length : 0 });
+  } catch (error) { next(error); }
+});
+
+app.delete("/api/folders/:name", requireOwnerAuth, async (req, res, next) => {
+  try {
+    const name = normalizeFolderName(req.params.name);
+    if (!name) { res.status(400).json({ error: "Collection name required." }); return; }
+    const entries = await readMetadata();
+    const toDelete = entries.filter(e => getPhotoFolder(e) === name);
+    for (const photo of toDelete) {
+      if (isS3Photo(photo)) {
+        await s3Client.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: getS3ObjectKey(photo) }));
+      } else {
+        await fsp.unlink(path.join(UPLOAD_DIR, getLocalStoredName(photo))).catch(() => {});
+      }
+    }
+    await writeMetadata(entries.filter(e => getPhotoFolder(e) !== name));
+    const savedFolders = await readFolders();
+    await writeFolders(savedFolders.filter(f => f !== name));
+    const meta = await readFolderMeta();
+    delete meta[name];
+    await writeFolderMeta(meta);
+    res.json({ message: `"${name}" deleted.`, deletedPhotos: toDelete.length });
+  } catch (error) { next(error); }
+});
+
+app.patch("/api/folders/:name/group", requireOwnerAuth, async (req, res, next) => {
+  try {
+    const name = normalizeFolderName(req.params.name);
+    const group = req.body?.group ? normalizeFolderName(req.body.group) : null;
+    if (!name) { res.status(400).json({ error: "Collection name required." }); return; }
+    const meta = await readFolderMeta();
+    if (!meta[name]) meta[name] = {};
+    if (group) { meta[name].parentGroup = group; } else { delete meta[name].parentGroup; }
+    await writeFolderMeta(meta);
+    res.json({ message: "Collection moved.", collection: name, group: group || null });
+  } catch (error) { next(error); }
 });
 
 app.post("/api/upload", requireOwnerAuth, upload.array("photos"), async (req, res, next) => {
@@ -906,7 +1013,7 @@ app.get("/api/photos/:id/thumb", requireOwnerAuth, async (req, res, next) => {
     if (isVideoMimeType(photo.mimeType)) {
       const thumbPath = await ensureVideoThumb(photo);
       if (thumbPath) {
-        res.set("Cache-Control", "public, max-age=86400");
+        setCdnCacheHeaders(res, { maxAge: 86400, sMaxAge: 604800 });
         res.sendFile(thumbPath);
         return;
       }
@@ -920,7 +1027,7 @@ app.get("/api/photos/:id/thumb", requireOwnerAuth, async (req, res, next) => {
     }
 
     if (isS3Photo(photo)) {
-      const signedUrl = await createS3AccessUrl(photo, "inline", 300);
+      const signedUrl = await createS3AccessUrl(photo, "inline", 3600);
       res.redirect(signedUrl);
       return;
     }
@@ -931,7 +1038,7 @@ app.get("/api/photos/:id/thumb", requireOwnerAuth, async (req, res, next) => {
       return;
     }
 
-    res.set("Cache-Control", "public, max-age=86400");
+    setCdnCacheHeaders(res, { maxAge: 86400, sMaxAge: 604800 });
     res.sendFile(thumbPath);
   } catch (error) {
     next(error);
@@ -1039,6 +1146,67 @@ app.post("/api/share-links", requireOwnerAuth, async (req, res, next) => {
       url: buildShortShareUrl(req, shortCode),
       longUrl: buildPublicShareUrl(req, token)
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ─── Admin: stats ────────────────────────────────────────────────────────────
+app.get("/api/admin/stats", requireOwnerAuth, async (_req, res, next) => {
+  try {
+    const [entries, links, folders] = await Promise.all([
+      readMetadata(),
+      readShareLinks(),
+      getFolderCatalog()
+    ]);
+    const totalSize = entries.reduce((sum, e) => sum + (e.size || 0), 0);
+    const activeShares = links.filter((l) => !isShareExpired(l)).length;
+    res.json({
+      photoCount: entries.length,
+      totalSize,
+      folderCount: folders.length,
+      shareLinkCount: links.length,
+      activeShareCount: activeShares,
+      storageProvider: USE_S3 ? "r2" : "local"
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ─── Admin: list share links ──────────────────────────────────────────────────
+app.get("/api/share-links", requireOwnerAuth, async (_req, res, next) => {
+  try {
+    const links = await readShareLinks();
+    const enriched = links
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .map((l) => ({
+        token: l.token,
+        shortCode: l.shortCode,
+        photoCount: l.photoIds?.length || 0,
+        folderNames: l.folderNames || [],
+        createdAt: l.createdAt,
+        expiresAt: l.expiresAt,
+        expired: isShareExpired(l)
+      }));
+    res.json(enriched);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ─── Admin: revoke share link ─────────────────────────────────────────────────
+app.delete("/api/share-links/:token", requireOwnerAuth, async (req, res, next) => {
+  try {
+    const target = String(req.params.token).trim();
+    const links = await readShareLinks();
+    const updated = links.filter((l) => l.token !== target && l.shortCode !== target);
+    if (updated.length === links.length) {
+      res.status(404).json({ error: "Share link not found." });
+      return;
+    }
+    await writeShareLinks(updated);
+    res.json({ message: "Share link revoked." });
   } catch (error) {
     next(error);
   }
@@ -1208,7 +1376,7 @@ app.get("/api/share/:token/photos/:photoId/thumb", async (req, res, next) => {
     if (isVideoMimeType(photo.mimeType)) {
       const thumbPath = await ensureVideoThumb(photo);
       if (thumbPath) {
-        res.set("Cache-Control", "public, max-age=86400");
+        setCdnCacheHeaders(res, { maxAge: 86400, sMaxAge: 604800 });
         res.sendFile(thumbPath);
         return;
       }
@@ -1221,7 +1389,7 @@ app.get("/api/share/:token/photos/:photoId/thumb", async (req, res, next) => {
     }
 
     if (isS3Photo(photo)) {
-      const signedUrl = await createS3AccessUrl(photo, "inline", 300);
+      const signedUrl = await createS3AccessUrl(photo, "inline", 3600);
       res.redirect(signedUrl);
       return;
     }
@@ -1231,7 +1399,7 @@ app.get("/api/share/:token/photos/:photoId/thumb", async (req, res, next) => {
       throw createHttpError(404, "Thumbnail unavailable.");
     }
 
-    res.set("Cache-Control", "public, max-age=86400");
+    setCdnCacheHeaders(res, { maxAge: 86400, sMaxAge: 604800 });
     res.sendFile(thumbPath);
   } catch (error) {
     next(error);
